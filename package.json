@@ -1,0 +1,29 @@
+{
+  "name": "hypercard-engine",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Electron + Three.js 1-bit HyperCard-style engine",
+  "main": "dist/main/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "chokidar": "^4.0.3",
+    "gsap": "^3.12.5",
+    "three": "^0.179.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "@types/three": "^0.183.1",
+    "electron": "^37.2.3",
+    "electron-vite": "^4.0.0",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.2",
+    "vitest": "^3.2.4"
+  }
+}

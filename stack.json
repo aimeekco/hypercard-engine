@@ -1,0 +1,30 @@
+{
+  "initialCardId": "trout_pool",
+  "cards": [
+    {
+      "id": "trout_pool",
+      "modelPath": "assets/models/trout.glb",
+      "camera": {
+        "position": [0.6, 1.0, 12.5],
+        "target": [0.6, 0.8, 0],
+        "fov": 46
+      },
+      "audio": {
+        "ambient": "assets/audio/pool-loop.wav",
+        "volume": 0.7,
+        "loop": true
+      },
+      "hotspots": [
+        {
+          "id": "trout-click",
+          "nodeName": "FIsh",
+          "onClick": {
+            "type": "setAnimation",
+            "clip": "ghost_glitch",
+            "fadeMs": 250
+          }
+        }
+      ]
+    }
+  ]
+}
