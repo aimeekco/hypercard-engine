@@ -7,7 +7,9 @@
   "type": "module",
   "scripts": {
     "dev": "electron-vite dev",
-    "build": "electron-vite build",
+    "build": "electron-vite build && npm run build:dither-cli",
+    "build:dither-cli": "tsc -p tsconfig.cli.json",
+    "dither:png": "npm run build:dither-cli && node dist/dither-cli/cli/dither-png-folder.js",
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
@@ -15,6 +17,7 @@
   "dependencies": {
     "chokidar": "^4.0.3",
     "gsap": "^3.12.5",
+    "pngjs": "^7.0.0",
     "three": "^0.179.1"
   },
   "devDependencies": {

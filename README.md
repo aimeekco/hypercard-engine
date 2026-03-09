@@ -59,3 +59,19 @@ Low-level API (raw RGBA frame):
 ```ts
 import { ditherRgbaFrame } from "./src/renderer/src/ditherEngine";
 ```
+
+For batch PNG processing from the command line:
+
+```bash
+npm run dither:png -- --input assets/sprites --output tmp/dithered --recursive
+```
+
+Optional flags:
+
+- `--threshold 0.5`
+- `--dither-strength 1.0`
+- `--pixel-size 2`
+- `--virtual-width 320 --virtual-height 240`
+- `--output-width 1280 --output-height 960`
+
+`--pixel-size` keeps the final image size by default and computes a smaller virtual dither size automatically. The default is `2`; use `--pixel-size 1` if you want the old no-extra-chunking behavior. Explicit `--virtual-width` and `--virtual-height` still win if both are provided.

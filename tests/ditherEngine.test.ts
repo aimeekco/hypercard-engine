@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { ditherRgbaFrame } from "../src/renderer/src/ditherEngine";
+import { ditherRgbaFrame } from "../src/shared/dither.js";
+
 
 function rgba(values: number[]): Uint8ClampedArray {
   return new Uint8ClampedArray(values);
