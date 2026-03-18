@@ -1,10 +1,12 @@
 import type {
   Action,
+  ArrowLink,
   Card,
-  Hotspot,
+  MediaKind,
+  MediaLayer,
+  ScreenPosition,
   StackDefinition,
-  StackValidationResult,
-  Vector3Tuple
+  StackValidationResult
 } from "./types";
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -15,12 +17,74 @@ function isString(value: unknown): value is string {
   return typeof value === "string" && value.length > 0;
 }
 
-function asVec3(value: unknown, path: string, errors: string[]): Vector3Tuple | null {
-  if (!Array.isArray(value) || value.length !== 3 || value.some((n) => typeof n !== "number")) {
-    errors.push(`${path} must be a [number, number, number] tuple`);
+function isMediaKind(value: unknown): value is MediaKind {
+  return value === "image" || value === "video";
+}
+
+function parsePosition(value: unknown, path: string, errors: string[]): ScreenPosition | undefined | null {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!isObject(value) || typeof value.x !== "number" || typeof value.y !== "number") {
+    errors.push(`${path} must be an object with numeric x and y`);
     return null;
   }
-  return [value[0] as number, value[1] as number, value[2] as number];
+  return { x: value.x, y: value.y };
+}
+
+function parseMediaLayer(value: unknown, path: string, errors: string[]): MediaLayer | null {
+  if (!isObject(value)) {
+    errors.push(`${path} must be an object`);
+    return null;
+  }
+  if (!isMediaKind(value.kind)) {
+    errors.push(`${path}.kind must be 'image' or 'video'`);
+  }
+  if (!isString(value.src)) {
+    errors.push(`${path}.src is required`);
+  }
+  if (!isMediaKind(value.kind) || !isString(value.src)) {
+    return null;
+  }
+  return {
+    kind: value.kind,
+    src: value.src
+  };
+}
+
+function parseArrow(value: unknown, path: string, errors: string[]): ArrowLink | null {
+  if (!isObject(value)) {
+    errors.push(`${path} must be an object`);
+    return null;
+  }
+  if (!isString(value.id)) {
+    errors.push(`${path}.id is required`);
+  }
+  if (value.direction !== "left" && value.direction !== "right" && value.direction !== "up" && value.direction !== "down") {
+    errors.push(`${path}.direction must be one of left, right, up, down`);
+  }
+  if (!isString(value.targetCardId)) {
+    errors.push(`${path}.targetCardId is required`);
+  }
+
+  const position = parsePosition(value.position, `${path}.position`, errors);
+  if (
+    !isString(value.id)
+    || (value.direction !== "left" && value.direction !== "right" && value.direction !== "up" && value.direction !== "down")
+    || !isString(value.targetCardId)
+    || position === null
+  ) {
+    return null;
+  }
+
+  return {
+    id: value.id,
+    direction: value.direction,
+    targetCardId: value.targetCardId,
+    label: isString(value.label) ? value.label : undefined,
+    position,
+    disabled: typeof value.disabled === "boolean" ? value.disabled : undefined
+  };
 }
 
 function parseAction(value: unknown, path: string, errors: string[]): Action | null {
@@ -35,15 +99,6 @@ function parseAction(value: unknown, path: string, errors: string[]): Action | n
       return null;
     }
     return { type: "goToCard", cardId: value.cardId };
-  }
-
-  if (value.type === "setAnimation") {
-    if (!isString(value.clip)) {
-      errors.push(`${path}.clip is required for setAnimation`);
-      return null;
-    }
-    const fadeMs = typeof value.fadeMs === "number" ? value.fadeMs : undefined;
-    return { type: "setAnimation", clip: value.clip, fadeMs };
   }
 
   if (value.type === "sequence") {
@@ -61,28 +116,6 @@ function parseAction(value: unknown, path: string, errors: string[]): Action | n
   return null;
 }
 
-function parseHotspot(value: unknown, path: string, errors: string[]): Hotspot | null {
-  if (!isObject(value)) {
-    errors.push(`${path} must be an object`);
-    return null;
-  }
-  if (!isString(value.id)) {
-    errors.push(`${path}.id is required`);
-  }
-  if (!isString(value.nodeName)) {
-    errors.push(`${path}.nodeName is required`);
-  }
-  const onClick = parseAction(value.onClick, `${path}.onClick`, errors);
-  if (!isString(value.id) || !isString(value.nodeName) || !onClick) {
-    return null;
-  }
-  return {
-    id: value.id,
-    nodeName: value.nodeName,
-    onClick
-  };
-}
-
 function parseCard(value: unknown, path: string, errors: string[]): Card | null {
   if (!isObject(value)) {
     errors.push(`${path} must be an object`);
@@ -92,32 +125,24 @@ function parseCard(value: unknown, path: string, errors: string[]): Card | null 
   if (!isString(value.id)) {
     errors.push(`${path}.id is required`);
   }
-  if (!isString(value.modelPath)) {
-    errors.push(`${path}.modelPath is required`);
-  }
-  if (!isObject(value.camera)) {
-    errors.push(`${path}.camera is required`);
-  }
-  const camera = isObject(value.camera) ? value.camera : null;
+  const background = parseMediaLayer(value.background, `${path}.background`, errors);
+  const overlay = value.overlay === undefined
+    ? undefined
+    : parseMediaLayer(value.overlay, `${path}.overlay`, errors);
 
-  const position = asVec3(camera?.position, `${path}.camera.position`, errors);
-  const target = asVec3(camera?.target, `${path}.camera.target`, errors);
-  const fov = typeof camera?.fov === "number" ? camera.fov : null;
-  if (fov === null) {
-    errors.push(`${path}.camera.fov must be a number`);
-  }
+  const arrows = value.arrows === undefined
+    ? undefined
+    : Array.isArray(value.arrows)
+      ? value.arrows
+          .map((arrow, index) => parseArrow(arrow, `${path}.arrows[${index}]`, errors))
+          .filter((arrow): arrow is ArrowLink => arrow !== null)
+      : null;
 
-  const hotspots = Array.isArray(value.hotspots)
-    ? value.hotspots
-        .map((hotspot, index) => parseHotspot(hotspot, `${path}.hotspots[${index}]`, errors))
-        .filter((hotspot): hotspot is Hotspot => hotspot !== null)
-    : null;
-
-  if (!Array.isArray(value.hotspots)) {
-    errors.push(`${path}.hotspots must be an array`);
+  if (value.arrows !== undefined && !Array.isArray(value.arrows)) {
+    errors.push(`${path}.arrows must be an array`);
   }
 
-  if (!isString(value.id) || !isString(value.modelPath) || !position || !target || fov === null || hotspots === null) {
+  if (!isString(value.id) || !background || overlay === null || arrows === null) {
     return null;
   }
 
@@ -131,10 +156,10 @@ function parseCard(value: unknown, path: string, errors: string[]): Card | null 
 
   return {
     id: value.id,
-    modelPath: value.modelPath,
-    camera: { position, target, fov },
+    background,
+    overlay,
     audio,
-    hotspots
+    arrows
   };
 }
 
@@ -163,6 +188,13 @@ export function validateStack(raw: unknown): StackValidationResult {
     }
     if (isString(raw.initialCardId) && !ids.has(raw.initialCardId)) {
       errors.push(`initialCardId '${raw.initialCardId}' does not exist in cards`);
+    }
+    for (const card of cards) {
+      for (const arrow of card.arrows ?? []) {
+        if (!ids.has(arrow.targetCardId)) {
+          errors.push(`card '${card.id}' arrow '${arrow.id}' points to missing card '${arrow.targetCardId}'`);
+        }
+      }
     }
   }
 

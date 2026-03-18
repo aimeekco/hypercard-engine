@@ -1,7 +1,6 @@
 import { app, BrowserWindow, ipcMain } from "electron";
 import chokidar, { type FSWatcher } from "chokidar";
 import { promises as fs } from "node:fs";
-import type { Dirent } from "node:fs";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { IPC_CHANNELS } from "@shared/ipc";
@@ -29,15 +28,6 @@ function ensurePathInRoot(root: string, relativePath: string): string {
 async function readJsonFile(filePath: string): Promise<unknown> {
   const raw = await fs.readFile(filePath, "utf-8");
   return JSON.parse(raw) as unknown;
-}
-
-async function listModels(root: string): Promise<string[]> {
-  const modelDir = ensurePathInRoot(root, "assets/models");
-  const entries = await fs.readdir(modelDir, { withFileTypes: true }).catch(() => [] as Dirent[]);
-  return entries
-    .filter((entry) => entry.isFile() && entry.name.endsWith(".glb"))
-    .map((entry) => path.posix.join("assets/models", entry.name))
-    .sort();
 }
 
 function createWindow(): void {
@@ -78,8 +68,6 @@ function setupIpcHandlers(root: string): void {
     return readJsonFile(stackPath);
   });
 
-  ipcMain.handle(IPC_CHANNELS.listModels, async () => listModels(root));
-
   ipcMain.handle(IPC_CHANNELS.readBinary, async (_event, relativePath: string) => {
     const abs = ensurePathInRoot(root, relativePath);
     return fs.readFile(abs);
@@ -96,8 +84,7 @@ function broadcastFileChanged(payload: FileChangedPayload): void {
 function setupWatchers(root: string): void {
   const watchTargets: Array<{ pattern: string; kind: FileChangedPayload["kind"] }> = [
     { pattern: path.join(root, "stack.json"), kind: "stack" },
-    { pattern: path.join(root, "assets/models/**/*.glb"), kind: "models" },
-    { pattern: path.join(root, "assets/audio/**/*"), kind: "audio" }
+    { pattern: path.join(root, "assets/**/*"), kind: "asset" }
   ];
 
   for (const { pattern, kind } of watchTargets) {

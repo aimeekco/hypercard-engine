@@ -1,15 +1,30 @@
-export type Vector3Tuple = [number, number, number];
-
-export type CameraSpec = {
-  position: Vector3Tuple;
-  target: Vector3Tuple;
-  fov: number;
-};
-
 export type AudioSpec = {
   ambient: string;
   volume?: number;
   loop?: boolean;
+};
+
+export type MediaKind = "image" | "video";
+
+export type MediaLayer = {
+  kind: MediaKind;
+  src: string;
+};
+
+export type ArrowDirection = "left" | "right" | "up" | "down";
+
+export type ScreenPosition = {
+  x: number;
+  y: number;
+};
+
+export type ArrowLink = {
+  id: string;
+  direction: ArrowDirection;
+  targetCardId: string;
+  label?: string;
+  position?: ScreenPosition;
+  disabled?: boolean;
 };
 
 export type GoToCardAction = {
@@ -17,31 +32,19 @@ export type GoToCardAction = {
   cardId: string;
 };
 
-export type SetAnimationAction = {
-  type: "setAnimation";
-  clip: string;
-  fadeMs?: number;
-};
-
 export type SequenceAction = {
   type: "sequence";
   steps: Action[];
 };
 
-export type Action = GoToCardAction | SetAnimationAction | SequenceAction;
-
-export type Hotspot = {
-  id: string;
-  nodeName: string;
-  onClick: Action;
-};
+export type Action = GoToCardAction | SequenceAction;
 
 export type Card = {
   id: string;
-  modelPath: string;
-  camera: CameraSpec;
+  background: MediaLayer;
+  overlay?: MediaLayer;
   audio?: AudioSpec;
-  hotspots: Hotspot[];
+  arrows?: ArrowLink[];
 };
 
 export type StackDefinition = {
@@ -50,7 +53,7 @@ export type StackDefinition = {
 };
 
 export type FileChangedPayload = {
-  kind: "stack" | "models" | "audio";
+  kind: "stack" | "asset";
   path: string;
   eventName: "add" | "change" | "unlink";
 };

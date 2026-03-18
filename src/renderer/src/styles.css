@@ -1,6 +1,11 @@
 :root {
-  --bg: #000;
-  --fg: #fff;
+  --bg: #050505;
+  --panel: rgba(0, 0, 0, 0.78);
+  --line: rgba(255, 255, 255, 0.45);
+  --fg: #f3f3f3;
+  --fg-muted: rgba(255, 255, 255, 0.72);
+  --arrow-bg: rgba(0, 0, 0, 0.82);
+  --arrow-bg-hover: rgba(255, 255, 255, 0.12);
 }
 
 html,
@@ -8,28 +13,153 @@ body {
   width: 100%;
   height: 100%;
   margin: 0;
-  background: radial-gradient(circle at 20% 20%, #1a1a1a 0%, #000 60%);
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.08), transparent 45%),
+    linear-gradient(180deg, #131313 0%, #050505 100%);
   overflow: hidden;
   color: var(--fg);
   font-family: "IBM Plex Mono", "SF Mono", Menlo, monospace;
 }
 
-#app-canvas {
-  width: 100%;
-  height: 100%;
-  display: block;
+body {
+  display: grid;
+  place-items: center;
 }
 
-#overlay {
+#app-shell {
+  width: 100vw;
+  height: 100vh;
+  padding: 28px;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+}
+
+#card-stage {
+  position: relative;
+  width: min(100%, 1280px);
+  height: min(100%, 880px);
+  border: 1px solid var(--line);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0)),
+    #000;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+    0 24px 60px rgba(0, 0, 0, 0.48);
+  overflow: hidden;
+}
+
+.card-layers,
+.card-controls {
+  position: absolute;
+  inset: 0;
+}
+
+.card-media {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  user-select: none;
+  pointer-events: none;
+}
+
+.card-media-overlay {
+  z-index: 1;
+}
+
+.card-controls {
+  z-index: 2;
+}
+
+.card-arrow {
+  --arrow-transform: none;
+  position: absolute;
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  background: var(--arrow-bg);
+  color: var(--fg);
+  font: inherit;
+  font-size: 30px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    transform 140ms ease;
+  transform: var(--arrow-transform);
+}
+
+.card-arrow:hover,
+.card-arrow:focus-visible {
+  background: var(--arrow-bg-hover);
+  border-color: rgba(255, 255, 255, 0.8);
+  transform: var(--arrow-transform) scale(1.04);
+  outline: none;
+}
+
+.card-arrow:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.card-arrow.is-left {
+  left: 20px;
+  top: 50%;
+  --arrow-transform: translateY(-50%);
+}
+
+.card-arrow.is-right {
+  right: 20px;
+  top: 50%;
+  --arrow-transform: translateY(-50%);
+}
+
+.card-arrow.is-up {
+  top: 20px;
+  left: 50%;
+  --arrow-transform: translateX(-50%);
+}
+
+.card-arrow.is-down {
+  bottom: 20px;
+  left: 50%;
+  --arrow-transform: translateX(-50%);
+}
+
+.card-arrow.is-custom {
+  --arrow-transform: translate(-50%, -50%);
+}
+
+#status {
   position: fixed;
   left: 16px;
   bottom: 16px;
-  max-width: min(600px, calc(100vw - 32px));
-  font-size: 12px;
-  line-height: 1.5;
+  max-width: min(640px, calc(100vw - 32px));
   padding: 8px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  background: rgba(0, 0, 0, 0.7);
-  pointer-events: none;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--fg-muted);
+  font-size: 12px;
+  line-height: 1.45;
   white-space: pre-wrap;
+  pointer-events: none;
+}
+
+@media (max-width: 720px) {
+  #app-shell {
+    padding: 12px;
+  }
+
+  .card-arrow {
+    width: 52px;
+    height: 52px;
+    font-size: 24px;
+  }
 }

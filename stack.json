@@ -1,28 +1,41 @@
 {
-  "initialCardId": "trout_pool",
+  "initialCardId": "pool_overlook",
   "cards": [
     {
-      "id": "trout_pool",
-      "modelPath": "assets/models/trout.glb",
-      "camera": {
-        "position": [0.6, 1.0, 12.5],
-        "target": [0.6, 0.8, 0],
-        "fov": 46
+      "id": "pool_overlook",
+      "background": {
+        "kind": "video",
+        "src": "assets/images/scene02_video_render_dither.mov"
       },
-      "audio": {
-        "ambient": "assets/audio/pool-loop.wav",
-        "volume": 0.7,
-        "loop": true
+      "overlay": {
+        "kind": "image",
+        "src": "assets/images/trout-overlay.svg"
       },
-      "hotspots": [
+      "arrows": [
         {
-          "id": "trout-click",
-          "nodeName": "FIsh",
-          "onClick": {
-            "type": "setAnimation",
-            "clip": "ghost_glitch",
-            "fadeMs": 250
-          }
+          "id": "to-reeds",
+          "direction": "right",
+          "targetCardId": "reeds_channel",
+          "label": "Go right"
+        }
+      ]
+    },
+    {
+      "id": "reeds_channel",
+      "background": {
+        "kind": "image",
+        "src": "assets/images/reeds-channel.svg"
+      },
+      "overlay": {
+        "kind": "image",
+        "src": "assets/images/trout-overlay.svg"
+      },
+      "arrows": [
+        {
+          "id": "to-overlook",
+          "direction": "left",
+          "targetCardId": "pool_overlook",
+          "label": "Go left"
         }
       ]
     }
