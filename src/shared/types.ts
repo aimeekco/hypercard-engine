@@ -12,10 +12,20 @@ export type MediaLayer = {
 };
 
 export type ArrowDirection = "left" | "right" | "up" | "down";
+export type CardStyleLevel = "modern" | "transitional" | "hypercard";
+export type ButtonVariant = "primary" | "secondary";
+export type TitleAlign = "left" | "center";
 
 export type ScreenPosition = {
   x: number;
   y: number;
+};
+
+export type ScreenBounds = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 };
 
 export type ArrowLink = {
@@ -25,6 +35,40 @@ export type ArrowLink = {
   label?: string;
   position?: ScreenPosition;
   disabled?: boolean;
+};
+
+export type ButtonLink = {
+  id: string;
+  label: string;
+  targetCardId: string;
+  position?: ScreenPosition;
+  variant?: ButtonVariant;
+  disabled?: boolean;
+};
+
+export type ClickTarget = {
+  id: string;
+  targetCardId: string;
+  bounds: ScreenBounds;
+  label?: string;
+  disabled?: boolean;
+};
+
+export type DragTarget = {
+  id: string;
+  src: string;
+  targetCardId: string;
+  startBounds: ScreenBounds;
+  dropBounds: ScreenBounds;
+  snapBounds?: ScreenBounds;
+  label?: string;
+  disabled?: boolean;
+};
+
+export type TitleSpec = {
+  heading: string;
+  subheading?: string;
+  align?: TitleAlign;
 };
 
 export type GoToCardAction = {
@@ -41,9 +85,14 @@ export type Action = GoToCardAction | SequenceAction;
 
 export type Card = {
   id: string;
+  styleLevel?: CardStyleLevel;
+  title?: TitleSpec;
   background: MediaLayer;
   overlay?: MediaLayer;
   audio?: AudioSpec;
+  buttons?: ButtonLink[];
+  clickTargets?: ClickTarget[];
+  dragTargets?: DragTarget[];
   arrows?: ArrowLink[];
 };
 

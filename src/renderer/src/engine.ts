@@ -3,9 +3,14 @@ import type {
   Action,
   ArrowDirection,
   ArrowLink,
+  ButtonLink,
   Card,
+  CardStyleLevel,
+  ClickTarget,
+  DragTarget,
   FileChangedPayload,
   MediaLayer,
+  ScreenBounds,
   StackDefinition
 } from "@shared/types";
 import { validateStack } from "@shared/validation";
@@ -16,6 +21,11 @@ const ARROW_GLYPHS: Record<ArrowDirection, string> = {
   right: ">",
   up: "^",
   down: "v"
+};
+
+const DEFAULT_CARD_BUTTON_POSITION = {
+  x: 50,
+  y: 72
 };
 
 function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
@@ -78,10 +88,80 @@ function getReferencedAssetPaths(card: Card): string[] {
   if (card.overlay) {
     paths.push(card.overlay.src);
   }
+  for (const dragTarget of card.dragTargets ?? []) {
+    paths.push(dragTarget.src);
+  }
   if (card.audio?.ambient) {
     paths.push(card.audio.ambient);
   }
   return paths;
+}
+
+function rectFromBounds(bounds: ScreenBounds, stageRect: DOMRect): DOMRect {
+  return new DOMRect(
+    stageRect.width * (bounds.x / 100),
+    stageRect.height * (bounds.y / 100),
+    stageRect.width * (bounds.width / 100),
+    stageRect.height * (bounds.height / 100)
+  );
+}
+
+function intersectsDropZone(itemRect: DOMRect, dropRect: DOMRect): boolean {
+  const centerX = itemRect.x + itemRect.width / 2;
+  const centerY = itemRect.y + itemRect.height / 2;
+  return (
+    centerX >= dropRect.x
+    && centerX <= dropRect.x + dropRect.width
+    && centerY >= dropRect.y
+    && centerY <= dropRect.y + dropRect.height
+  );
+}
+
+function getMediaIntrinsicSize(element: HTMLElement): { width: number; height: number } {
+  if (element instanceof HTMLImageElement) {
+    return {
+      width: Math.max(1, element.naturalWidth),
+      height: Math.max(1, element.naturalHeight)
+    };
+  }
+
+  if (element instanceof HTMLVideoElement) {
+    return {
+      width: Math.max(1, element.videoWidth || element.clientWidth),
+      height: Math.max(1, element.videoHeight || element.clientHeight)
+    };
+  }
+
+  return {
+    width: Math.max(1, element.clientWidth),
+    height: Math.max(1, element.clientHeight)
+  };
+}
+
+function getContainedFrameRect(containerRect: DOMRect, mediaWidth: number, mediaHeight: number): DOMRect {
+  const mediaAspect = mediaWidth / mediaHeight;
+  const containerAspect = containerRect.width / containerRect.height;
+
+  if (mediaAspect > containerAspect) {
+    const width = containerRect.width;
+    const height = width / mediaAspect;
+    return new DOMRect(0, (containerRect.height - height) / 2, width, height);
+  }
+
+  const height = containerRect.height;
+  const width = height * mediaAspect;
+  return new DOMRect((containerRect.width - width) / 2, 0, width, height);
+}
+
+function getWindowTitle(card: Card): string {
+  if (card.title?.heading) {
+    return card.title.heading;
+  }
+  return card.id
+    .split(/[_-]+/)
+    .filter((part) => part.length > 0)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 export class HypercardEngine {
@@ -102,6 +182,7 @@ export class HypercardEngine {
 
     window.addEventListener("keydown", this.handleKeyDown);
     window.addEventListener("pointerdown", this.unlockAudio, { once: true });
+    window.addEventListener("resize", this.handleResize);
   }
 
   async start(): Promise<void> {
@@ -119,6 +200,13 @@ export class HypercardEngine {
 
   private readonly unlockAudio = (): void => {
     void this.audio.unlock();
+  };
+
+  private readonly handleResize = (): void => {
+    if (!this.currentCardId) {
+      return;
+    }
+    void this.enterCard(this.currentCardId);
   };
 
   private readonly handleKeyDown = (event: KeyboardEvent): void => {
@@ -169,7 +257,7 @@ export class HypercardEngine {
       const stack = await this.readStackValidated();
       this.stack = stack;
       this.cardsById = new Map(stack.cards.map((card) => [card.id, card]));
-      this.setStatus(`Card: ${this.currentCardId ?? stack.initialCardId}`);
+      this.setStatus("");
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (isInitial || !this.stack) {
@@ -251,6 +339,201 @@ export class HypercardEngine {
     return button;
   }
 
+  private createCardButton(buttonSpec: ButtonLink): HTMLButtonElement {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `card-button is-${buttonSpec.variant ?? "primary"}`;
+    button.textContent = buttonSpec.label;
+    button.setAttribute("aria-label", buttonSpec.label);
+
+    const position = buttonSpec.position ?? DEFAULT_CARD_BUTTON_POSITION;
+    button.style.left = `${position.x}%`;
+    button.style.top = `${position.y}%`;
+
+    if (buttonSpec.disabled) {
+      button.disabled = true;
+    } else {
+      button.addEventListener("click", () => {
+        void this.applyAction({ type: "goToCard", cardId: buttonSpec.targetCardId });
+      });
+    }
+    return button;
+  }
+
+  private createClickTarget(clickTarget: ClickTarget): HTMLButtonElement {
+    const target = document.createElement("button");
+    target.type = "button";
+    target.className = "card-click-target";
+    target.setAttribute("aria-label", clickTarget.label ?? "Continue");
+    target.style.left = `${clickTarget.bounds.x}%`;
+    target.style.top = `${clickTarget.bounds.y}%`;
+    target.style.width = `${clickTarget.bounds.width}%`;
+    target.style.height = `${clickTarget.bounds.height}%`;
+
+    if (clickTarget.disabled) {
+      target.disabled = true;
+    } else {
+      target.addEventListener("click", () => {
+        void this.applyAction({ type: "goToCard", cardId: clickTarget.targetCardId });
+      });
+    }
+
+    return target;
+  }
+
+  private async createDragTarget(dragTarget: DragTarget, frameElement: HTMLElement): Promise<HTMLButtonElement> {
+    const target = document.createElement("button");
+    target.type = "button";
+    target.className = "card-drag-target";
+    target.setAttribute("aria-label", dragTarget.label ?? "Insert disk");
+
+    const assetUrl = await this.getAssetUrl(dragTarget.src);
+    const image = document.createElement("img");
+    image.className = "card-drag-target-image";
+    image.alt = "";
+    image.draggable = false;
+    image.src = assetUrl;
+    await waitForImageLoad(image);
+    target.append(image);
+
+    target.style.left = `${dragTarget.startBounds.x}%`;
+    target.style.top = `${dragTarget.startBounds.y}%`;
+    target.style.width = `${dragTarget.startBounds.width}%`;
+    target.style.height = `${dragTarget.startBounds.height}%`;
+
+    if (dragTarget.disabled) {
+      target.disabled = true;
+      return target;
+    }
+
+    target.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+
+      const frameRect = frameElement.getBoundingClientRect();
+      const startRect = rectFromBounds(dragTarget.startBounds, frameRect);
+      const dropRect = rectFromBounds(dragTarget.dropBounds, frameRect);
+      const snapRect = rectFromBounds(dragTarget.snapBounds ?? dragTarget.dropBounds, frameRect);
+      const pointerOffsetX = event.clientX - (frameRect.left + startRect.x);
+      const pointerOffsetY = event.clientY - (frameRect.top + startRect.y);
+
+      const moveTarget = (leftPx: number, topPx: number): void => {
+        target.style.left = `${(leftPx / frameRect.width) * 100}%`;
+        target.style.top = `${(topPx / frameRect.height) * 100}%`;
+      };
+
+      target.classList.add("is-dragging");
+      target.setPointerCapture(event.pointerId);
+
+      const handleMove = (moveEvent: PointerEvent): void => {
+        const nextLeft = Math.max(0, Math.min(frameRect.width - startRect.width, moveEvent.clientX - frameRect.left - pointerOffsetX));
+        const nextTop = Math.max(0, Math.min(frameRect.height - startRect.height, moveEvent.clientY - frameRect.top - pointerOffsetY));
+        moveTarget(nextLeft, nextTop);
+      };
+
+      const handleEnd = (endEvent: PointerEvent): void => {
+        target.classList.remove("is-dragging");
+        window.removeEventListener("pointermove", handleMove);
+        window.removeEventListener("pointerup", handleEnd);
+        window.removeEventListener("pointercancel", handleEnd);
+
+        const currentRect = new DOMRect(
+          (parseFloat(target.style.left) / 100) * frameRect.width,
+          (parseFloat(target.style.top) / 100) * frameRect.height,
+          startRect.width,
+          startRect.height
+        );
+
+        if (intersectsDropZone(currentRect, dropRect)) {
+          target.disabled = true;
+          target.classList.add("is-settled");
+          moveTarget(snapRect.x, snapRect.y);
+          window.setTimeout(() => {
+            void this.applyAction({ type: "goToCard", cardId: dragTarget.targetCardId });
+          }, 180);
+          return;
+        }
+
+        moveTarget(startRect.x, startRect.y);
+        if (target.hasPointerCapture(endEvent.pointerId)) {
+          target.releasePointerCapture(endEvent.pointerId);
+        }
+      };
+
+      window.addEventListener("pointermove", handleMove);
+      window.addEventListener("pointerup", handleEnd);
+      window.addEventListener("pointercancel", handleEnd);
+    });
+
+    return target;
+  }
+
+  private createTitleBlock(card: Card): HTMLElement | null {
+    if (!card.title) {
+      return null;
+    }
+
+    const copy = document.createElement("section");
+    copy.className = `card-copy is-${card.title.align ?? "center"}`;
+
+    const heading = document.createElement("h2");
+    heading.className = "card-title";
+    heading.textContent = card.title.heading;
+    copy.append(heading);
+
+    if (card.title.subheading) {
+      const subheading = document.createElement("p");
+      subheading.className = "card-subtitle";
+      subheading.textContent = card.title.subheading;
+      copy.append(subheading);
+    }
+
+    return copy;
+  }
+
+  private createWindowChrome(card: Card): HTMLElement | null {
+    if (card.id === "boot_mac" || card.id === "intro_title") {
+      return null;
+    }
+
+    const chrome = document.createElement("section");
+    chrome.className = "card-window-chrome";
+
+    const titlebar = document.createElement("div");
+    titlebar.className = "card-window-titlebar";
+
+    const leftCap = document.createElement("div");
+    leftCap.className = "card-window-cap";
+    const rightCap = document.createElement("div");
+    rightCap.className = "card-window-cap";
+
+    const title = document.createElement("div");
+    title.className = "card-window-title";
+    title.textContent = getWindowTitle(card);
+
+    titlebar.append(leftCap, title, rightCap);
+
+    const frame = document.createElement("div");
+    frame.className = "card-window-frame";
+
+    chrome.append(titlebar, frame);
+    return chrome;
+  }
+
+  private createInsetCardLabel(card: Card): HTMLElement | null {
+    if (card.id === "boot_mac" || card.id === "intro_title") {
+      return null;
+    }
+
+    const label = document.createElement("div");
+    label.className = "card-frame-label";
+    label.textContent = `Card: ${card.id}`;
+    return label;
+  }
+
+  private applyStyleLevel(styleLevel: CardStyleLevel | undefined): void {
+    this.stage.dataset.styleLevel = styleLevel ?? "modern";
+  }
+
   private async enterCard(cardId: string): Promise<void> {
     const card = this.cardsById.get(cardId);
     if (!card) {
@@ -281,13 +564,51 @@ export class HypercardEngine {
 
       const controls = document.createElement("div");
       controls.className = "card-controls";
+      const windowChrome = this.createWindowChrome(card);
+      if (windowChrome) {
+        controls.append(windowChrome);
+      }
+      const insetCardLabel = this.createInsetCardLabel(card);
+      if (insetCardLabel) {
+        controls.append(insetCardLabel);
+      }
+      const backgroundSize = getMediaIntrinsicSize(backgroundElement);
+      const stageRect = this.stage.getBoundingClientRect();
+      const containedFrameRect = getContainedFrameRect(stageRect, backgroundSize.width, backgroundSize.height);
+      const frame = document.createElement("div");
+      frame.className = "card-content-frame";
+      frame.style.left = `${containedFrameRect.x}px`;
+      frame.style.top = `${containedFrameRect.y}px`;
+      frame.style.width = `${containedFrameRect.width}px`;
+      frame.style.height = `${containedFrameRect.height}px`;
+
+      const dragTargetElements = await Promise.all((card.dragTargets ?? []).map((dragTarget) => this.createDragTarget(dragTarget, frame)));
+
+      const titleBlock = this.createTitleBlock(card);
+      if (titleBlock) {
+        frame.append(titleBlock);
+      }
+      for (const button of card.buttons ?? []) {
+        frame.append(this.createCardButton(button));
+      }
+      for (const clickTarget of card.clickTargets ?? []) {
+        frame.append(this.createClickTarget(clickTarget));
+      }
+      for (const dragTargetElement of dragTargetElements) {
+        frame.append(dragTargetElement);
+      }
+      controls.append(frame);
       for (const arrow of card.arrows ?? []) {
         controls.append(this.createArrowButton(arrow));
       }
 
+      this.applyStyleLevel(card.styleLevel);
       this.stage.replaceChildren(layers, controls);
       this.currentCardId = card.id;
-      this.setStatus(`Card: ${card.id}`);
+      this.setStatus("");
+      if (card.buttons && card.buttons.length > 0) {
+        controls.querySelector<HTMLButtonElement>(".card-button:not(:disabled)")?.focus();
+      }
 
       if (card.audio?.ambient) {
         await this.audio.playAmbient(card.audio.ambient, {
@@ -345,6 +666,7 @@ export class HypercardEngine {
   dispose(): void {
     window.removeEventListener("keydown", this.handleKeyDown);
     window.removeEventListener("pointerdown", this.unlockAudio);
+    window.removeEventListener("resize", this.handleResize);
     this.unsubscribeFileChanged?.();
     this.unsubscribeFileChanged = null;
     for (const url of this.assetUrlCache.values()) {

@@ -1,15 +1,75 @@
 {
-  "initialCardId": "pool_overlook",
+  "initialCardId": "boot_mac",
   "cards": [
     {
+      "id": "boot_mac",
+      "styleLevel": "modern",
+      "background": {
+        "kind": "image",
+        "src": "assets/images/old_mac_zoom_out_dithered.png"
+      },
+      "clickTargets": [
+        {
+          "id": "click-macintosh",
+          "targetCardId": "intro_title",
+          "label": "Open stack",
+          "bounds": {
+            "x": 27,
+            "y": 11,
+            "width": 39,
+            "height": 76
+          }
+        }
+      ]
+    },
+    {
+      "id": "intro_title",
+      "styleLevel": "modern",
+      "title": {
+        "heading": "fish stack",
+        "subheading": "Insert the disk"
+      },
+      "background": {
+        "kind": "image",
+        "src": "assets/images/old_mac_dithered.png"
+      },
+      "dragTargets": [
+        {
+          "id": "insert-disk",
+          "src": "assets/images/floppy_disk.png",
+          "label": "Insert disk",
+          "targetCardId": "pool_overlook",
+          "startBounds": {
+            "x": 14,
+            "y": 57,
+            "width": 28,
+            "height": 40
+          },
+          "dropBounds": {
+            "x": 50,
+            "y": 20,
+            "width": 40,
+            "height": 34
+          },
+          "snapBounds": {
+            "x": 50,
+            "y": 20,
+            "width": 33,
+            "height": 28
+          }
+        }
+      ]
+    },
+    {
       "id": "pool_overlook",
+      "styleLevel": "modern",
       "background": {
         "kind": "video",
         "src": "assets/images/scene02_video_render_dither.mov"
       },
       "overlay": {
-        "kind": "image",
-        "src": "assets/images/trout-overlay.svg"
+        "kind": "video",
+        "src": "assets/images/anim_1_render.webm"
       },
       "arrows": [
         {
@@ -17,11 +77,18 @@
           "direction": "right",
           "targetCardId": "reeds_channel",
           "label": "Go right"
+        },
+        {
+          "id": "back-to-title",
+          "direction": "left",
+          "targetCardId": "boot_mac",
+          "label": "Back"
         }
       ]
     },
     {
       "id": "reeds_channel",
+      "styleLevel": "transitional",
       "background": {
         "kind": "image",
         "src": "assets/images/reeds-channel.svg"
@@ -35,6 +102,36 @@
           "id": "to-overlook",
           "direction": "left",
           "targetCardId": "pool_overlook",
+          "label": "Go left"
+        },
+        {
+          "id": "to-channel3",
+          "direction": "right",
+          "targetCardId": "channel3",
+          "label": "Go right"
+        }
+      ]
+    },
+    {
+      "id": "channel3",
+      "styleLevel": "hypercard",
+      "title": {
+        "heading": "Deep Stack",
+        "subheading": "The framing is harsher here; keep pushing the media treatment externally as you move further inward."
+      },
+      "background": {
+        "kind": "image",
+        "src": "assets/images/reeds-channel.svg"
+      },
+      "overlay": {
+        "kind": "image",
+        "src": "assets/images/trout-overlay.svg"
+      },
+      "arrows": [
+        {
+          "id": "to-reeds",
+          "direction": "left",
+          "targetCardId": "reeds_channel",
           "label": "Go left"
         }
       ]
