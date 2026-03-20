@@ -2,6 +2,7 @@ import type {
   ArrowLink,
   ButtonLink,
   Card,
+  CardTransitionSpec,
   CardStyleLevel,
   ClickTarget,
   DragTarget,
@@ -99,11 +100,13 @@ function parseArrow(value: unknown, path: string, errors: string[]): ArrowLink |
   }
 
   const position = parsePosition(value.position, `${path}.position`, errors);
+  const transition = parseTransition(value.transition, `${path}.transition`, errors);
   if (
     !isString(value.id)
     || (value.direction !== "left" && value.direction !== "right" && value.direction !== "up" && value.direction !== "down")
     || !isString(value.targetCardId)
     || position === null
+    || transition === null
   ) {
     return null;
   }
@@ -114,7 +117,8 @@ function parseArrow(value: unknown, path: string, errors: string[]): ArrowLink |
     targetCardId: value.targetCardId,
     label: isString(value.label) ? value.label : undefined,
     position,
-    disabled: typeof value.disabled === "boolean" ? value.disabled : undefined
+    disabled: typeof value.disabled === "boolean" ? value.disabled : undefined,
+    transition
   };
 }
 
@@ -137,12 +141,14 @@ function parseButton(value: unknown, path: string, errors: string[]): ButtonLink
   }
 
   const position = parsePosition(value.position, `${path}.position`, errors);
+  const transition = parseTransition(value.transition, `${path}.transition`, errors);
   if (
     !isString(value.id)
     || !isString(value.label)
     || !isString(value.targetCardId)
     || (value.variant !== undefined && value.variant !== "primary" && value.variant !== "secondary")
     || position === null
+    || transition === null
   ) {
     return null;
   }
@@ -153,7 +159,8 @@ function parseButton(value: unknown, path: string, errors: string[]): ButtonLink
     targetCardId: value.targetCardId,
     position,
     variant: value.variant,
-    disabled: typeof value.disabled === "boolean" ? value.disabled : undefined
+    disabled: typeof value.disabled === "boolean" ? value.disabled : undefined,
+    transition
   };
 }
 
@@ -186,6 +193,43 @@ function parseTitle(value: unknown, path: string, errors: string[]): TitleSpec |
   };
 }
 
+function parseTransition(value: unknown, path: string, errors: string[]): CardTransitionSpec | undefined | null {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!isObject(value)) {
+    errors.push(`${path} must be an object`);
+    return null;
+  }
+  if (value.kind !== "zoom") {
+    errors.push(`${path}.kind must be 'zoom'`);
+  }
+  const focusBounds = parseBounds(value.focusBounds, `${path}.focusBounds`, errors);
+  if (
+    value.durationMs !== undefined
+    && (typeof value.durationMs !== "number" || !Number.isFinite(value.durationMs) || value.durationMs <= 0)
+  ) {
+    errors.push(`${path}.durationMs must be a positive number`);
+  }
+  if (
+    value.entryScale !== undefined
+    && (typeof value.entryScale !== "number" || !Number.isFinite(value.entryScale) || value.entryScale < 1)
+  ) {
+    errors.push(`${path}.entryScale must be a number greater than or equal to 1`);
+  }
+
+  if (value.kind !== "zoom" || !focusBounds) {
+    return null;
+  }
+
+  return {
+    kind: value.kind,
+    focusBounds,
+    durationMs: typeof value.durationMs === "number" ? value.durationMs : undefined,
+    entryScale: typeof value.entryScale === "number" ? value.entryScale : undefined
+  };
+}
+
 function parseClickTarget(value: unknown, path: string, errors: string[]): ClickTarget | null {
   if (!isObject(value)) {
     errors.push(`${path} must be an object`);
@@ -199,7 +243,8 @@ function parseClickTarget(value: unknown, path: string, errors: string[]): Click
   }
 
   const bounds = parseBounds(value.bounds, `${path}.bounds`, errors);
-  if (!isString(value.id) || !isString(value.targetCardId) || !bounds) {
+  const transition = parseTransition(value.transition, `${path}.transition`, errors);
+  if (!isString(value.id) || !isString(value.targetCardId) || !bounds || transition === null) {
     return null;
   }
 
@@ -208,7 +253,8 @@ function parseClickTarget(value: unknown, path: string, errors: string[]): Click
     targetCardId: value.targetCardId,
     bounds,
     label: isString(value.label) ? value.label : undefined,
-    disabled: typeof value.disabled === "boolean" ? value.disabled : undefined
+    disabled: typeof value.disabled === "boolean" ? value.disabled : undefined,
+    transition
   };
 }
 
@@ -232,6 +278,7 @@ function parseDragTarget(value: unknown, path: string, errors: string[]): DragTa
   const snapBounds = value.snapBounds === undefined
     ? undefined
     : parseBounds(value.snapBounds, `${path}.snapBounds`, errors);
+  const transition = parseTransition(value.transition, `${path}.transition`, errors);
 
   if (
     !isString(value.id)
@@ -240,6 +287,7 @@ function parseDragTarget(value: unknown, path: string, errors: string[]): DragTa
     || !startBounds
     || !dropBounds
     || snapBounds === null
+    || transition === null
   ) {
     return null;
   }
@@ -252,7 +300,8 @@ function parseDragTarget(value: unknown, path: string, errors: string[]): DragTa
     dropBounds,
     snapBounds,
     label: isString(value.label) ? value.label : undefined,
-    disabled: typeof value.disabled === "boolean" ? value.disabled : undefined
+    disabled: typeof value.disabled === "boolean" ? value.disabled : undefined,
+    transition
   };
 }
 

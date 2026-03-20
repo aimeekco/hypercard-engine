@@ -5,6 +5,7 @@ import type {
   ArrowLink,
   ButtonLink,
   Card,
+  CardTransitionSpec,
   CardStyleLevel,
   ClickTarget,
   DragTarget,
@@ -164,6 +165,10 @@ function getWindowTitle(card: Card): string {
     .join(" ");
 }
 
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
 export class HypercardEngine {
   private readonly stage: HTMLElement;
   private readonly status: HTMLElement;
@@ -175,6 +180,7 @@ export class HypercardEngine {
   private unsubscribeFileChanged: (() => void) | null = null;
   private readonly assetUrlCache = new Map<string, string>();
   private renderToken = 0;
+  private isTransitioning = false;
 
   constructor(stage: HTMLElement, status: HTMLElement) {
     this.stage = stage;
@@ -236,7 +242,7 @@ export class HypercardEngine {
     }
 
     event.preventDefault();
-    void this.applyAction({ type: "goToCard", cardId: arrow.targetCardId });
+    void this.applyAction({ type: "goToCard", cardId: arrow.targetCardId, transition: arrow.transition });
   };
 
   private setStatus(message: string): void {
@@ -333,7 +339,7 @@ export class HypercardEngine {
       button.disabled = true;
     } else {
       button.addEventListener("click", () => {
-        void this.applyAction({ type: "goToCard", cardId: arrow.targetCardId });
+        void this.applyAction({ type: "goToCard", cardId: arrow.targetCardId, transition: arrow.transition });
       });
     }
     return button;
@@ -354,7 +360,7 @@ export class HypercardEngine {
       button.disabled = true;
     } else {
       button.addEventListener("click", () => {
-        void this.applyAction({ type: "goToCard", cardId: buttonSpec.targetCardId });
+        void this.applyAction({ type: "goToCard", cardId: buttonSpec.targetCardId, transition: buttonSpec.transition });
       });
     }
     return button;
@@ -374,7 +380,7 @@ export class HypercardEngine {
       target.disabled = true;
     } else {
       target.addEventListener("click", () => {
-        void this.applyAction({ type: "goToCard", cardId: clickTarget.targetCardId });
+        void this.applyAction({ type: "goToCard", cardId: clickTarget.targetCardId, transition: clickTarget.transition });
       });
     }
 
@@ -448,7 +454,7 @@ export class HypercardEngine {
           target.classList.add("is-settled");
           moveTarget(snapRect.x, snapRect.y);
           window.setTimeout(() => {
-            void this.applyAction({ type: "goToCard", cardId: dragTarget.targetCardId });
+            void this.applyAction({ type: "goToCard", cardId: dragTarget.targetCardId, transition: dragTarget.transition });
           }, 180);
           return;
         }
@@ -534,7 +540,147 @@ export class HypercardEngine {
     this.stage.dataset.styleLevel = styleLevel ?? "modern";
   }
 
-  private async enterCard(cardId: string): Promise<void> {
+  private async buildCardScene(card: Card): Promise<HTMLElement> {
+    const [backgroundElement, overlayElement] = await Promise.all([
+      this.createLayerElement(card.background, "card-media card-media-background", `${card.id} background`),
+      card.overlay
+        ? this.createLayerElement(card.overlay, "card-media card-media-overlay", `${card.id} overlay`)
+        : Promise.resolve(null)
+    ]);
+
+    const scene = document.createElement("div");
+    scene.className = "card-scene";
+
+    const layers = document.createElement("div");
+    layers.className = "card-layers";
+    layers.append(backgroundElement);
+    if (overlayElement) {
+      layers.append(overlayElement);
+    }
+
+    const controls = document.createElement("div");
+    controls.className = "card-controls";
+    const windowChrome = this.createWindowChrome(card);
+    if (windowChrome) {
+      controls.append(windowChrome);
+    }
+    const insetCardLabel = this.createInsetCardLabel(card);
+    if (insetCardLabel) {
+      controls.append(insetCardLabel);
+    }
+    const backgroundSize = getMediaIntrinsicSize(backgroundElement);
+    const stageRect = this.stage.getBoundingClientRect();
+    const containedFrameRect = getContainedFrameRect(stageRect, backgroundSize.width, backgroundSize.height);
+    const frame = document.createElement("div");
+    frame.className = "card-content-frame";
+    frame.style.left = `${containedFrameRect.x}px`;
+    frame.style.top = `${containedFrameRect.y}px`;
+    frame.style.width = `${containedFrameRect.width}px`;
+    frame.style.height = `${containedFrameRect.height}px`;
+
+    const dragTargetElements = await Promise.all((card.dragTargets ?? []).map((dragTarget) => this.createDragTarget(dragTarget, frame)));
+
+    const titleBlock = this.createTitleBlock(card);
+    if (titleBlock) {
+      frame.append(titleBlock);
+    }
+    for (const button of card.buttons ?? []) {
+      frame.append(this.createCardButton(button));
+    }
+    for (const clickTarget of card.clickTargets ?? []) {
+      frame.append(this.createClickTarget(clickTarget));
+    }
+    for (const dragTargetElement of dragTargetElements) {
+      frame.append(dragTargetElement);
+    }
+    controls.append(frame);
+    for (const arrow of card.arrows ?? []) {
+      controls.append(this.createArrowButton(arrow));
+    }
+
+    scene.append(layers, controls);
+    return scene;
+  }
+
+  private async animateTransition(outgoingScene: HTMLElement, incomingScene: HTMLElement, transition: CardTransitionSpec): Promise<void> {
+    const stageRect = this.stage.getBoundingClientRect();
+    const localStageRect = new DOMRect(0, 0, Math.max(1, stageRect.width), Math.max(1, stageRect.height));
+    const focusRect = rectFromBounds(transition.focusBounds, localStageRect);
+    const focusCenterX = focusRect.x + focusRect.width / 2;
+    const focusCenterY = focusRect.y + focusRect.height / 2;
+    const exitScale = clamp(
+      Math.min(
+        localStageRect.width / Math.max(focusRect.width, 1),
+        localStageRect.height / Math.max(focusRect.height, 1)
+      ),
+      1,
+      6
+    );
+    const translateX = localStageRect.width / 2 - focusCenterX;
+    const translateY = localStageRect.height / 2 - focusCenterY;
+    const duration = transition.durationMs ?? 720;
+    const entryScale = transition.entryScale ?? 1.04;
+    const incomingDelay = Math.round(duration * 0.18);
+    const incomingDuration = Math.max(180, duration - incomingDelay);
+
+    outgoingScene.style.transformOrigin = `${focusCenterX}px ${focusCenterY}px`;
+    incomingScene.style.transformOrigin = `${focusCenterX}px ${focusCenterY}px`;
+    incomingScene.style.opacity = "0";
+    incomingScene.style.pointerEvents = "none";
+
+    const exitAnimation = outgoingScene.animate(
+      [
+        {
+          opacity: 1,
+          filter: "blur(0px) brightness(1)",
+          transform: "translate(0px, 0px) scale(1)"
+        },
+        {
+          opacity: 0,
+          filter: "blur(12px) brightness(0.6)",
+          transform: `translate(${translateX}px, ${translateY}px) scale(${exitScale})`
+        }
+      ],
+      {
+        duration,
+        easing: "cubic-bezier(0.2, 0.78, 0.2, 1)",
+        fill: "forwards"
+      }
+    );
+
+    const enterAnimation = incomingScene.animate(
+      [
+        {
+          opacity: 0,
+          filter: "blur(12px) brightness(0.58)",
+          transform: `scale(${entryScale})`
+        },
+        {
+          opacity: 1,
+          filter: "blur(0px) brightness(1)",
+          transform: "scale(1)"
+        }
+      ],
+      {
+        duration: incomingDuration,
+        delay: incomingDelay,
+        easing: "cubic-bezier(0.18, 0.8, 0.22, 1)",
+        fill: "forwards"
+      }
+    );
+
+    await Promise.all([
+      exitAnimation.finished.catch(() => undefined),
+      enterAnimation.finished.catch(() => undefined)
+    ]);
+
+    outgoingScene.remove();
+    incomingScene.style.removeProperty("opacity");
+    incomingScene.style.removeProperty("pointer-events");
+    incomingScene.style.removeProperty("transform-origin");
+  }
+
+  private async enterCard(cardId: string, transition?: CardTransitionSpec): Promise<void> {
     const card = this.cardsById.get(cardId);
     if (!card) {
       this.setStatus(`Unknown card '${cardId}'`);
@@ -544,70 +690,34 @@ export class HypercardEngine {
     const renderToken = ++this.renderToken;
 
     try {
-      const [backgroundElement, overlayElement] = await Promise.all([
-        this.createLayerElement(card.background, "card-media card-media-background", `${card.id} background`),
-        card.overlay
-          ? this.createLayerElement(card.overlay, "card-media card-media-overlay", `${card.id} overlay`)
-          : Promise.resolve(null)
-      ]);
+      const scene = await this.buildCardScene(card);
 
       if (renderToken !== this.renderToken) {
         return;
       }
 
-      const layers = document.createElement("div");
-      layers.className = "card-layers";
-      layers.append(backgroundElement);
-      if (overlayElement) {
-        layers.append(overlayElement);
+      const previousScene = this.stage.querySelector<HTMLElement>(".card-scene");
+      const shouldAnimate = Boolean(transition && previousScene && this.currentCardId && this.currentCardId !== card.id);
+
+      if (shouldAnimate && previousScene && transition) {
+        this.isTransitioning = true;
+        try {
+          this.applyStyleLevel(card.styleLevel);
+          this.stage.append(scene);
+          await this.animateTransition(previousScene, scene, transition);
+          this.stage.replaceChildren(scene);
+        } finally {
+          this.isTransitioning = false;
+        }
+      } else {
+        this.applyStyleLevel(card.styleLevel);
+        this.stage.replaceChildren(scene);
       }
 
-      const controls = document.createElement("div");
-      controls.className = "card-controls";
-      const windowChrome = this.createWindowChrome(card);
-      if (windowChrome) {
-        controls.append(windowChrome);
-      }
-      const insetCardLabel = this.createInsetCardLabel(card);
-      if (insetCardLabel) {
-        controls.append(insetCardLabel);
-      }
-      const backgroundSize = getMediaIntrinsicSize(backgroundElement);
-      const stageRect = this.stage.getBoundingClientRect();
-      const containedFrameRect = getContainedFrameRect(stageRect, backgroundSize.width, backgroundSize.height);
-      const frame = document.createElement("div");
-      frame.className = "card-content-frame";
-      frame.style.left = `${containedFrameRect.x}px`;
-      frame.style.top = `${containedFrameRect.y}px`;
-      frame.style.width = `${containedFrameRect.width}px`;
-      frame.style.height = `${containedFrameRect.height}px`;
-
-      const dragTargetElements = await Promise.all((card.dragTargets ?? []).map((dragTarget) => this.createDragTarget(dragTarget, frame)));
-
-      const titleBlock = this.createTitleBlock(card);
-      if (titleBlock) {
-        frame.append(titleBlock);
-      }
-      for (const button of card.buttons ?? []) {
-        frame.append(this.createCardButton(button));
-      }
-      for (const clickTarget of card.clickTargets ?? []) {
-        frame.append(this.createClickTarget(clickTarget));
-      }
-      for (const dragTargetElement of dragTargetElements) {
-        frame.append(dragTargetElement);
-      }
-      controls.append(frame);
-      for (const arrow of card.arrows ?? []) {
-        controls.append(this.createArrowButton(arrow));
-      }
-
-      this.applyStyleLevel(card.styleLevel);
-      this.stage.replaceChildren(layers, controls);
       this.currentCardId = card.id;
       this.setStatus("");
       if (card.buttons && card.buttons.length > 0) {
-        controls.querySelector<HTMLButtonElement>(".card-button:not(:disabled)")?.focus();
+        scene.querySelector<HTMLButtonElement>(".card-button:not(:disabled)")?.focus();
       }
 
       if (card.audio?.ambient) {
@@ -628,9 +738,12 @@ export class HypercardEngine {
   }
 
   private async applyAction(action: Action): Promise<void> {
+    if (this.isTransitioning) {
+      return;
+    }
     await executeAction(action, {
-      goToCard: async (nextCardId) => {
-        await this.enterCard(nextCardId);
+      goToCard: async (nextCardId, transition) => {
+        await this.enterCard(nextCardId, transition);
       }
     });
   }

@@ -35,6 +35,17 @@ describe("validateStack", () => {
             {
               id: "click-screen",
               targetCardId: "reeds",
+              transition: {
+                kind: "zoom",
+                focusBounds: {
+                  x: 34,
+                  y: 20,
+                  width: 18,
+                  height: 28
+                },
+                durationMs: 800,
+                entryScale: 1.08
+              },
               bounds: {
                 x: 30,
                 y: 20,
@@ -87,6 +98,7 @@ describe("validateStack", () => {
       expect(result.value.cards[0]?.overlay?.src).toBe("assets/images/trout.png");
       expect(result.value.cards[0]?.buttons?.[0]?.label).toBe("Click to start");
       expect(result.value.cards[0]?.clickTargets?.[0]?.bounds.width).toBe(20);
+      expect(result.value.cards[0]?.clickTargets?.[0]?.transition?.kind).toBe("zoom");
       expect(result.value.cards[0]?.dragTargets?.[0]?.src).toBe("assets/images/floppy_disk.png");
       expect(result.value.cards[0]?.styleLevel).toBe("modern");
     }
@@ -249,6 +261,47 @@ describe("validateStack", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.errors.join("\n")).toContain("cards[0].styleLevel must be 'modern', 'transitional', or 'hypercard'");
+    }
+  });
+
+  it("rejects invalid transition configs", () => {
+    const result = validateStack({
+      initialCardId: "pool",
+      cards: [
+        {
+          id: "pool",
+          background: {
+            kind: "image",
+            src: "assets/images/pool.png"
+          },
+          clickTargets: [
+            {
+              id: "computer",
+              targetCardId: "pool",
+              transition: {
+                kind: "push",
+                focusBounds: {
+                  x: 20,
+                  y: 10,
+                  width: 25,
+                  height: 30
+                }
+              },
+              bounds: {
+                x: 25,
+                y: 10,
+                width: 40,
+                height: 75
+              }
+            }
+          ]
+        }
+      ]
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.join("\n")).toContain("cards[0].clickTargets[0].transition.kind must be 'zoom'");
     }
   });
 

@@ -75,10 +75,16 @@ body {
     var(--stage-shadow);
 }
 
+.card-scene,
 .card-layers,
 .card-controls {
   position: absolute;
   inset: 0;
+}
+
+.card-scene {
+  overflow: hidden;
+  will-change: transform, opacity, filter;
 }
 
 .card-controls {

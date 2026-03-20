@@ -28,6 +28,13 @@ export type ScreenBounds = {
   height: number;
 };
 
+export type CardTransitionSpec = {
+  kind: "zoom";
+  focusBounds: ScreenBounds;
+  durationMs?: number;
+  entryScale?: number;
+};
+
 export type ArrowLink = {
   id: string;
   direction: ArrowDirection;
@@ -35,6 +42,7 @@ export type ArrowLink = {
   label?: string;
   position?: ScreenPosition;
   disabled?: boolean;
+  transition?: CardTransitionSpec;
 };
 
 export type ButtonLink = {
@@ -44,6 +52,7 @@ export type ButtonLink = {
   position?: ScreenPosition;
   variant?: ButtonVariant;
   disabled?: boolean;
+  transition?: CardTransitionSpec;
 };
 
 export type ClickTarget = {
@@ -52,6 +61,7 @@ export type ClickTarget = {
   bounds: ScreenBounds;
   label?: string;
   disabled?: boolean;
+  transition?: CardTransitionSpec;
 };
 
 export type DragTarget = {
@@ -63,6 +73,7 @@ export type DragTarget = {
   snapBounds?: ScreenBounds;
   label?: string;
   disabled?: boolean;
+  transition?: CardTransitionSpec;
 };
 
 export type TitleSpec = {
@@ -74,6 +85,7 @@ export type TitleSpec = {
 export type GoToCardAction = {
   type: "goToCard";
   cardId: string;
+  transition?: CardTransitionSpec;
 };
 
 export type SequenceAction = {
