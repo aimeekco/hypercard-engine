@@ -11,7 +11,7 @@ export type MediaLayer = {
   src: string;
 };
 
-export type ArrowDirection = "left" | "right" | "up" | "down";
+export type ArrowDirection = "left" | "right" | "up" | "down" | "forward";
 export type CardStyleLevel = "modern" | "transitional" | "hypercard";
 export type ButtonVariant = "primary" | "secondary";
 export type TitleAlign = "left" | "center";

@@ -78,6 +78,11 @@ describe("validateStack", () => {
               id: "to-reeds",
               direction: "right",
               targetCardId: "reeds"
+            },
+            {
+              id: "deeper",
+              direction: "forward",
+              targetCardId: "reeds"
             }
           ]
         },
@@ -100,6 +105,7 @@ describe("validateStack", () => {
       expect(result.value.cards[0]?.clickTargets?.[0]?.bounds.width).toBe(20);
       expect(result.value.cards[0]?.clickTargets?.[0]?.transition?.kind).toBe("zoom");
       expect(result.value.cards[0]?.dragTargets?.[0]?.src).toBe("assets/images/floppy_disk.png");
+      expect(result.value.cards[0]?.arrows?.[1]?.direction).toBe("forward");
       expect(result.value.cards[0]?.styleLevel).toBe("modern");
     }
   });

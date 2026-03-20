@@ -21,7 +21,8 @@ const ARROW_GLYPHS: Record<ArrowDirection, string> = {
   left: "<",
   right: ">",
   up: "^",
-  down: "v"
+  down: "v",
+  forward: "^"
 };
 
 const DEFAULT_CARD_BUTTON_POSITION = {
@@ -220,23 +221,27 @@ export class HypercardEngine {
       return;
     }
 
-    let direction: ArrowDirection | null = null;
+    let directions: ArrowDirection[] = [];
     if (event.key === "ArrowLeft") {
-      direction = "left";
+      directions = ["left"];
     } else if (event.key === "ArrowRight") {
-      direction = "right";
+      directions = ["right"];
     } else if (event.key === "ArrowUp") {
-      direction = "up";
+      directions = ["forward", "up"];
     } else if (event.key === "ArrowDown") {
-      direction = "down";
+      directions = ["down"];
+    } else if (event.key === "w" || event.key === "W") {
+      directions = ["forward"];
     }
 
-    if (!direction) {
+    if (directions.length === 0) {
       return;
     }
 
     const card = this.currentCardId ? this.cardsById.get(this.currentCardId) : null;
-    const arrow = card?.arrows?.find((candidate) => candidate.direction === direction && !candidate.disabled);
+    const arrow = directions
+      .map((direction) => card?.arrows?.find((candidate) => candidate.direction === direction && !candidate.disabled))
+      .find((candidate): candidate is ArrowLink => candidate !== undefined);
     if (!arrow) {
       return;
     }
@@ -328,7 +333,10 @@ export class HypercardEngine {
     const button = document.createElement("button");
     button.type = "button";
     button.className = `card-arrow is-${arrow.direction}`;
-    button.textContent = ARROW_GLYPHS[arrow.direction];
+    const icon = document.createElement("span");
+    icon.className = "card-arrow-icon";
+    icon.textContent = ARROW_GLYPHS[arrow.direction];
+    button.append(icon);
     button.setAttribute("aria-label", arrow.label ?? `Go ${arrow.direction}`);
     if (arrow.position) {
       button.classList.add("is-custom");

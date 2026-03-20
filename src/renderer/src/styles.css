@@ -38,6 +38,12 @@ body {
   --stage-shadow: 0 24px 60px rgba(0, 0, 0, 0.48);
   --chrome-bg: rgba(0, 0, 0, 0.72);
   --chrome-hover: rgba(255, 255, 255, 0.12);
+  --arrow-bg:
+    linear-gradient(180deg, rgba(28, 28, 28, 0.92), rgba(6, 6, 6, 0.82));
+  --arrow-border: rgba(255, 255, 255, 0.34);
+  --arrow-shadow:
+    0 14px 28px rgba(0, 0, 0, 0.24),
+    0 0 0 1px rgba(255, 255, 255, 0.06) inset;
   --title-max-width: 720px;
   position: relative;
   width: min(100%, 1280px);
@@ -119,9 +125,9 @@ body {
 }
 
 .card-window-titlebar {
-  height: 36px;
+  height: 42px;
   display: grid;
-  grid-template-columns: 90px minmax(0, 1fr) 90px;
+  grid-template-columns: 112px minmax(0, 1fr) 112px;
   align-items: center;
   background:
     repeating-linear-gradient(
@@ -142,26 +148,29 @@ body {
 
 .card-window-title {
   justify-self: center;
-  padding: 0 18px;
-  font-size: clamp(18px, 2vw, 24px);
+  padding: 0 24px;
+  font-size: clamp(18px, 1.8vw, 22px);
   font-weight: 700;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.03em;
   line-height: 1;
   color: #050505;
   background: rgba(228, 228, 228, 0.98);
-  text-transform: none;
+  text-transform: uppercase;
+  box-shadow:
+    14px 0 0 rgba(228, 228, 228, 0.98),
+    -14px 0 0 rgba(228, 228, 228, 0.98);
 }
 
 .card-window-frame {
   position: absolute;
-  top: 34px;
+  top: 40px;
   left: 0;
   right: 0;
   bottom: 0;
   border: 2px solid rgba(255, 255, 255, 0.78);
   box-shadow:
     0 0 0 1px rgba(0, 0, 0, 0.95) inset,
-    0 0 0 12px rgba(0, 0, 0, 0.18) inset;
+    0 0 0 10px rgba(0, 0, 0, 0.14) inset;
 }
 
 .card-frame-label {
@@ -169,15 +178,17 @@ body {
   left: 16px;
   bottom: 16px;
   z-index: 4;
-  padding: 6px 10px;
-  font-size: 12px;
+  padding: 5px 9px;
+  font-size: 11px;
   line-height: 1;
-  color: #f3f3f3;
-  background: rgba(0, 0, 0, 0.86);
-  border: 2px solid rgba(255, 255, 255, 0.72);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.88);
+  background: rgba(0, 0, 0, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.54);
   box-shadow:
     0 0 0 1px rgba(0, 0, 0, 0.95) inset,
-    2px 2px 0 rgba(255, 255, 255, 0.22);
+    0 6px 16px rgba(0, 0, 0, 0.2);
   pointer-events: none;
 }
 
@@ -230,14 +241,16 @@ body {
   position: absolute;
   display: grid;
   place-items: center;
-  border: 1px solid var(--stage-line);
-  background: var(--chrome-bg);
+  border: 1px solid var(--arrow-border);
+  background: var(--arrow-bg);
   color: var(--fg);
   font: inherit;
   cursor: pointer;
+  box-shadow: var(--arrow-shadow);
   transition:
     background 140ms ease,
     border-color 140ms ease,
+    box-shadow 140ms ease,
     transform 140ms ease;
   transform: var(--control-transform);
   z-index: 5;
@@ -247,8 +260,12 @@ body {
 .card-arrow:focus-visible,
 .card-button:hover,
 .card-button:focus-visible {
-  background: var(--chrome-hover);
+  background:
+    linear-gradient(180deg, rgba(42, 42, 42, 0.95), rgba(12, 12, 12, 0.88));
   border-color: rgba(255, 255, 255, 0.9);
+  box-shadow:
+    0 18px 30px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.12) inset;
   transform: var(--control-transform) scale(1.04);
   outline: none;
 }
@@ -261,21 +278,27 @@ body {
 }
 
 .card-arrow {
-  width: 64px;
-  height: 64px;
-  font-size: 30px;
+  width: 56px;
+  height: 56px;
+  font-size: 28px;
   line-height: 1;
   border-radius: 999px;
+  backdrop-filter: blur(8px);
+}
+
+.card-arrow-icon {
+  display: block;
+  line-height: 1;
 }
 
 .card-arrow.is-left {
-  left: 20px;
+  left: 16px;
   top: 50%;
   --control-transform: translateY(-50%);
 }
 
 .card-arrow.is-right {
-  right: 20px;
+  right: 16px;
   top: 50%;
   --control-transform: translateY(-50%);
 }
@@ -290,6 +313,17 @@ body {
   bottom: 20px;
   left: 50%;
   --control-transform: translateX(-50%);
+}
+
+.card-arrow.is-forward {
+  left: 50%;
+  top: 56px;
+  --control-transform: translateX(-50%);
+}
+
+.card-arrow.is-forward .card-arrow-icon {
+  transform: none;
+  font-size: inherit;
 }
 
 .card-arrow.is-custom {
@@ -370,10 +404,6 @@ body {
   backdrop-filter: blur(6px);
 }
 
-#card-stage[data-style-level="modern"] .card-arrow {
-  backdrop-filter: blur(6px);
-}
-
 #card-stage[data-style-level="transitional"] .card-title {
   letter-spacing: -0.03em;
   text-transform: uppercase;
@@ -407,6 +437,7 @@ body {
   font-size: clamp(16px, 1.5vw, 20px);
   letter-spacing: 0.03em;
   text-transform: uppercase;
+  box-shadow: none;
 }
 
 #card-stage[data-style-level="hypercard"] .card-window-frame {
@@ -471,6 +502,14 @@ body {
     width: 52px;
     height: 52px;
     font-size: 24px;
+  }
+
+  .card-arrow.is-forward {
+    top: 56px;
+  }
+
+  .card-arrow.is-forward .card-arrow-icon {
+    font-size: inherit;
   }
 
   .card-button {

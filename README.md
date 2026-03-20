@@ -34,7 +34,8 @@ npm run start
 
 - Renderer output is forced to strict black/white via custom 1-bit dither shader.
 - Model/audio/stack updates hot-reload while the app is running.
-- Sample `stack.json` references `assets/models/trout.glb`; add your own exported Blender model there.
+- Cards can branch with `left`, `right`, `forward`, `up`, and `down` arrows by pointing each arrow at a different `targetCardId`.
+- The sample `stack.json` now demonstrates a small branching path with three distinct endings.
 
 ## Standalone Dither Engine (PNG)
 

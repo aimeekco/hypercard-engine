@@ -92,8 +92,8 @@ function parseArrow(value: unknown, path: string, errors: string[]): ArrowLink |
   if (!isString(value.id)) {
     errors.push(`${path}.id is required`);
   }
-  if (value.direction !== "left" && value.direction !== "right" && value.direction !== "up" && value.direction !== "down") {
-    errors.push(`${path}.direction must be one of left, right, up, down`);
+  if (value.direction !== "left" && value.direction !== "right" && value.direction !== "up" && value.direction !== "down" && value.direction !== "forward") {
+    errors.push(`${path}.direction must be one of left, right, up, down, forward`);
   }
   if (!isString(value.targetCardId)) {
     errors.push(`${path}.targetCardId is required`);
@@ -103,7 +103,7 @@ function parseArrow(value: unknown, path: string, errors: string[]): ArrowLink |
   const transition = parseTransition(value.transition, `${path}.transition`, errors);
   if (
     !isString(value.id)
-    || (value.direction !== "left" && value.direction !== "right" && value.direction !== "up" && value.direction !== "down")
+    || (value.direction !== "left" && value.direction !== "right" && value.direction !== "up" && value.direction !== "down" && value.direction !== "forward")
     || !isString(value.targetCardId)
     || position === null
     || transition === null
