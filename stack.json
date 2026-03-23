@@ -136,6 +136,10 @@
         "kind": "image",
         "src": "assets/images/pool-overlook.svg"
       },
+      "overlay": {
+        "kind": "video",
+        "src": "assets/images/left_view_dither_render.webm"
+      },
       "arrows": [
         {
           "id": "return-to-overlook",
@@ -174,8 +178,8 @@
         "src": "assets/images/reeds-channel.svg"
       },
       "overlay": {
-        "kind": "image",
-        "src": "assets/images/trout-overlay.svg"
+        "kind": "video",
+        "src": "assets/images/right_view_dither_render.webm"
       },
       "arrows": [
         {
