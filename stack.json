@@ -87,7 +87,7 @@
       "styleLevel": "modern",
       "background": {
         "kind": "video",
-        "src": "assets/images/scene02_video_render_dither.mov"
+        "src": "assets/images/scene_1_dither.mov"
       },
       "overlay": {
         "kind": "video",
