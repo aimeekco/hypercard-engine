@@ -226,7 +226,11 @@
       },
       "overlay": {
         "kind": "image",
-        "src": "assets/images/trout-overlay.svg"
+        "src": "assets/images/trout-overlay.svg",
+        "position": {
+          "x": 50,
+          "y": 58
+        }
       },
       "arrows": [
         {
@@ -287,7 +291,11 @@
       },
       "overlay": {
         "kind": "image",
-        "src": "assets/images/trout-overlay.svg"
+        "src": "assets/images/trout-overlay.svg",
+        "position": {
+          "x": 50,
+          "y": 58
+        }
       },
       "buttons": [
         {
@@ -311,7 +319,11 @@
       },
       "overlay": {
         "kind": "image",
-        "src": "assets/images/trout-overlay.svg"
+        "src": "assets/images/trout-overlay.svg",
+        "position": {
+          "x": 50,
+          "y": 58
+        }
       },
       "buttons": [
         {

@@ -75,12 +75,14 @@ function parseMediaLayer(value: unknown, path: string, errors: string[]): MediaL
   if (!isString(value.src)) {
     errors.push(`${path}.src is required`);
   }
-  if (!isMediaKind(value.kind) || !isString(value.src)) {
+  const position = parsePosition(value.position, `${path}.position`, errors);
+  if (!isMediaKind(value.kind) || !isString(value.src) || position === null) {
     return null;
   }
   return {
     kind: value.kind,
-    src: value.src
+    src: value.src,
+    position
   };
 }
 

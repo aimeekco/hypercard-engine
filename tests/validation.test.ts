@@ -20,7 +20,8 @@ describe("validateStack", () => {
           },
           overlay: {
             kind: "image",
-            src: "assets/images/trout.png"
+            src: "assets/images/trout.png",
+            position: { x: 50, y: 58 }
           },
           buttons: [
             {
@@ -101,6 +102,7 @@ describe("validateStack", () => {
       expect(result.value.initialCardId).toBe("pool");
       expect(result.value.cards).toHaveLength(2);
       expect(result.value.cards[0]?.overlay?.src).toBe("assets/images/trout.png");
+      expect(result.value.cards[0]?.overlay?.position).toEqual({ x: 50, y: 58 });
       expect(result.value.cards[0]?.buttons?.[0]?.label).toBe("Click to start");
       expect(result.value.cards[0]?.clickTargets?.[0]?.bounds.width).toBe(20);
       expect(result.value.cards[0]?.clickTargets?.[0]?.transition?.kind).toBe("zoom");

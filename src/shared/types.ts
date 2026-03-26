@@ -9,6 +9,7 @@ export type MediaKind = "image" | "video";
 export type MediaLayer = {
   kind: MediaKind;
   src: string;
+  position?: ScreenPosition;
 };
 
 export type ArrowDirection = "left" | "right" | "up" | "down" | "forward";

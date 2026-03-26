@@ -1,7 +1,7 @@
 import { executeAction } from "@shared/actions";
+import { getArrowNavigationTarget } from "@shared/navigation";
 import type {
   Action,
-  ArrowDirection,
   ArrowLink,
   ButtonLink,
   Card,
@@ -17,7 +17,7 @@ import type {
 import { validateStack } from "@shared/validation";
 import { AudioEngine } from "./audioEngine";
 
-const ARROW_GLYPHS: Record<ArrowDirection, string> = {
+const ARROW_GLYPHS: Record<ArrowLink["direction"], string> = {
   left: "<",
   right: ">",
   up: "^",
@@ -221,27 +221,8 @@ export class HypercardEngine {
       return;
     }
 
-    let directions: ArrowDirection[] = [];
-    if (event.key === "ArrowLeft") {
-      directions = ["left"];
-    } else if (event.key === "ArrowRight") {
-      directions = ["right"];
-    } else if (event.key === "ArrowUp") {
-      directions = ["forward", "up"];
-    } else if (event.key === "ArrowDown") {
-      directions = ["down"];
-    } else if (event.key === "w" || event.key === "W") {
-      directions = ["forward"];
-    }
-
-    if (directions.length === 0) {
-      return;
-    }
-
     const card = this.currentCardId ? this.cardsById.get(this.currentCardId) : null;
-    const arrow = directions
-      .map((direction) => card?.arrows?.find((candidate) => candidate.direction === direction && !candidate.disabled))
-      .find((candidate): candidate is ArrowLink => candidate !== undefined);
+    const arrow = getArrowNavigationTarget(card, event.key);
     if (!arrow) {
       return;
     }
@@ -309,6 +290,9 @@ export class HypercardEngine {
       image.alt = alt;
       image.draggable = false;
       image.src = assetUrl;
+      if (layer.position) {
+        image.style.objectPosition = `${layer.position.x}% ${layer.position.y}%`;
+      }
       await waitForImageLoad(image);
       return image;
     }
@@ -322,6 +306,9 @@ export class HypercardEngine {
     video.defaultMuted = true;
     video.playsInline = true;
     video.setAttribute("aria-label", alt);
+    if (layer.position) {
+      video.style.objectPosition = `${layer.position.x}% ${layer.position.y}%`;
+    }
     await waitForVideoLoad(video);
     void video.play().catch((error) => {
       console.warn("Video playback did not start immediately", error);
