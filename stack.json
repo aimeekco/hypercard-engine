@@ -128,10 +128,6 @@
     {
       "id": "shallow_bend",
       "styleLevel": "modern",
-      "title": {
-        "heading": "Shallow Bend",
-        "subheading": "Sunlight skims the water here. One more push keeps you close to the surface."
-      },
       "background": {
         "kind": "image",
         "src": "assets/images/pool-overlook.svg"
@@ -169,10 +165,6 @@
     {
       "id": "reeds_channel",
       "styleLevel": "transitional",
-      "title": {
-        "heading": "Reeds Channel",
-        "subheading": "The current narrows. You can drift sideways or commit to the darker opening ahead."
-      },
       "background": {
         "kind": "image",
         "src": "assets/images/reeds-channel.svg"
@@ -216,17 +208,13 @@
     {
       "id": "deep_channel",
       "styleLevel": "hypercard",
-      "title": {
-        "heading": "Deep Channel",
-        "subheading": "Everything compresses here. There is only one honest move left: go deeper."
-      },
       "background": {
-        "kind": "image",
-        "src": "assets/images/reeds-channel.svg"
+        "kind": "video",
+        "src": "assets/images/scene_2_dither.mov"
       },
       "overlay": {
-        "kind": "image",
-        "src": "assets/images/trout-overlay.svg",
+        "kind": "video",
+        "src": "assets/images/back_view_dither_render.webm",
         "position": {
           "x": 50,
           "y": 58
