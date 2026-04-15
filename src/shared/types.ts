@@ -12,6 +12,9 @@ export type MediaLayer = {
   position?: ScreenPosition;
 };
 
+export const DITHER_LEVEL_VALUES = [0, 0.25, 0.5, 0.75, 1] as const;
+export type DitherLevel = typeof DITHER_LEVEL_VALUES[number];
+
 export type ArrowDirection = "left" | "right" | "up" | "down" | "forward";
 export type CardStyleLevel = "modern" | "transitional" | "hypercard";
 export type ButtonVariant = "primary" | "secondary";
@@ -101,6 +104,7 @@ export type Card = {
   styleLevel?: CardStyleLevel;
   title?: TitleSpec;
   background: MediaLayer;
+  backgroundFolder?: string;
   overlay?: MediaLayer;
   audio?: AudioSpec;
   buttons?: ButtonLink[];

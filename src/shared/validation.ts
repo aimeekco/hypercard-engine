@@ -329,6 +329,9 @@ function parseCard(value: unknown, path: string, errors: string[]): Card | null 
   const overlay = value.overlay === undefined
     ? undefined
     : parseMediaLayer(value.overlay, `${path}.overlay`, errors);
+  if (value.backgroundFolder !== undefined && !isString(value.backgroundFolder)) {
+    errors.push(`${path}.backgroundFolder must be a non-empty string`);
+  }
 
   const buttons = value.buttons === undefined
     ? undefined
@@ -402,6 +405,7 @@ function parseCard(value: unknown, path: string, errors: string[]): Card | null 
     styleLevel,
     title,
     background,
+    backgroundFolder: isString(value.backgroundFolder) ? value.backgroundFolder : undefined,
     overlay,
     audio,
     buttons,

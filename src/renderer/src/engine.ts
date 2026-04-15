@@ -1,4 +1,9 @@
 import { executeAction } from "@shared/actions";
+import {
+  chooseRandomEntry,
+  getDitherFolderCandidates,
+  getDitherLevelForStep
+} from "@shared/backgroundBank";
 import { getArrowNavigationTarget } from "@shared/navigation";
 import type {
   Action,
@@ -8,10 +13,12 @@ import type {
   CardTransitionSpec,
   CardStyleLevel,
   ClickTarget,
+  DitherLevel,
   DragTarget,
   FileChangedPayload,
   MediaLayer,
   ScreenBounds,
+  ScreenPosition,
   StackDefinition
 } from "@shared/types";
 import { validateStack } from "@shared/validation";
@@ -28,6 +35,17 @@ const ARROW_GLYPHS: Record<ArrowLink["direction"], string> = {
 const DEFAULT_CARD_BUTTON_POSITION = {
   x: 50,
   y: 72
+};
+
+type EnterCardOptions = {
+  advanceProgression?: boolean;
+  preserveBackgroundSelection?: boolean;
+};
+
+type BackgroundSelection = {
+  cardId: string;
+  level: DitherLevel;
+  layer: MediaLayer;
 };
 
 function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
@@ -65,6 +83,44 @@ function guessMimeType(relativePath: string): string {
   return "application/octet-stream";
 }
 
+function guessMediaKind(relativePath: string): MediaLayer["kind"] | null {
+  const lower = relativePath.toLowerCase();
+  if (
+    lower.endsWith(".png")
+    || lower.endsWith(".jpg")
+    || lower.endsWith(".jpeg")
+    || lower.endsWith(".webp")
+    || lower.endsWith(".gif")
+    || lower.endsWith(".svg")
+  ) {
+    return "image";
+  }
+  if (lower.endsWith(".webm") || lower.endsWith(".mp4") || lower.endsWith(".mov")) {
+    return "video";
+  }
+  return null;
+}
+
+function isSupportedBackgroundAsset(relativePath: string): boolean {
+  return guessMediaKind(relativePath) !== null;
+}
+
+function arePositionsEqual(left?: ScreenPosition, right?: ScreenPosition): boolean {
+  if (!left && !right) {
+    return true;
+  }
+  if (!left || !right) {
+    return false;
+  }
+  return left.x === right.x && left.y === right.y;
+}
+
+function areMediaLayersEqual(left: MediaLayer, right: MediaLayer): boolean {
+  return left.kind === right.kind
+    && left.src === right.src
+    && arePositionsEqual(left.position, right.position);
+}
+
 function waitForImageLoad(image: HTMLImageElement): Promise<void> {
   if (image.complete && image.naturalWidth > 0) {
     return Promise.resolve();
@@ -85,8 +141,11 @@ function waitForVideoLoad(video: HTMLVideoElement): Promise<void> {
   });
 }
 
-function getReferencedAssetPaths(card: Card): string[] {
+function getReferencedAssetPaths(card: Card, selectedBackgroundLayer?: MediaLayer | null): string[] {
   const paths = [card.background.src];
+  if (selectedBackgroundLayer && selectedBackgroundLayer.src !== card.background.src) {
+    paths.push(selectedBackgroundLayer.src);
+  }
   if (card.overlay) {
     paths.push(card.overlay.src);
   }
@@ -96,7 +155,7 @@ function getReferencedAssetPaths(card: Card): string[] {
   if (card.audio?.ambient) {
     paths.push(card.audio.ambient);
   }
-  return paths;
+  return Array.from(new Set(paths));
 }
 
 function rectFromBounds(bounds: ScreenBounds, stageRect: DOMRect): DOMRect {
@@ -180,8 +239,11 @@ export class HypercardEngine {
   private currentCardId: string | null = null;
   private unsubscribeFileChanged: (() => void) | null = null;
   private readonly assetUrlCache = new Map<string, string>();
+  private readonly backgroundFolderCache = new Map<string, string[]>();
   private renderToken = 0;
   private isTransitioning = false;
+  private navigationStep = 0;
+  private currentBackgroundSelection: BackgroundSelection | null = null;
 
   constructor(stage: HTMLElement, status: HTMLElement) {
     this.stage = stage;
@@ -213,7 +275,7 @@ export class HypercardEngine {
     if (!this.currentCardId) {
       return;
     }
-    void this.enterCard(this.currentCardId);
+    void this.enterCard(this.currentCardId, undefined, { preserveBackgroundSelection: true });
   };
 
   private readonly handleKeyDown = (event: KeyboardEvent): void => {
@@ -535,9 +597,104 @@ export class HypercardEngine {
     this.stage.dataset.styleLevel = styleLevel ?? "modern";
   }
 
-  private async buildCardScene(card: Card): Promise<HTMLElement> {
+  private async getBackgroundFolderAssets(relativeDir: string): Promise<string[]> {
+    const cached = this.backgroundFolderCache.get(relativeDir);
+    if (cached) {
+      return cached;
+    }
+
+    const assets = (await window.hypercard.listFiles(relativeDir))
+      .filter((relativePath) => isSupportedBackgroundAsset(relativePath));
+    this.backgroundFolderCache.set(relativeDir, assets);
+    return assets;
+  }
+
+  private invalidateBackgroundFolderAssets(relativePath: string): void {
+    for (const folderPath of this.backgroundFolderCache.keys()) {
+      if (relativePath.startsWith(`${folderPath}/`)) {
+        this.backgroundFolderCache.delete(folderPath);
+      }
+    }
+  }
+
+  private getDitherLevelForRender(cardId: string, advanceProgression: boolean): DitherLevel {
+    const isCardToCardNavigation = advanceProgression && this.currentCardId !== null && this.currentCardId !== cardId;
+    const scheduleStep = isCardToCardNavigation
+      ? this.navigationStep
+      : Math.max(0, this.navigationStep - (this.currentCardId ? 1 : 0));
+    return getDitherLevelForStep(scheduleStep);
+  }
+
+  private async resolveBackgroundLayer(
+    card: Card,
+    preserveCurrentSelection: boolean,
+    advanceProgression: boolean
+  ): Promise<MediaLayer> {
+    const currentLevel = this.getDitherLevelForRender(card.id, advanceProgression);
+    let availableLayers: MediaLayer[] = [];
+
+    if (card.backgroundFolder) {
+      const candidateFolders = getDitherFolderCandidates(card.backgroundFolder, currentLevel);
+      for (const folderPath of candidateFolders) {
+        const folderAssets = await this.getBackgroundFolderAssets(folderPath);
+        if (folderAssets.length === 0) {
+          continue;
+        }
+
+        const resolvedLayers: MediaLayer[] = [];
+        for (const assetPath of folderAssets) {
+          const kind = guessMediaKind(assetPath);
+          if (!kind) {
+            continue;
+          }
+          resolvedLayers.push({
+            kind,
+            src: assetPath,
+            position: card.background.position
+          });
+        }
+
+        availableLayers = resolvedLayers;
+
+        if (availableLayers.length > 0) {
+          break;
+        }
+      }
+    }
+
+    if (availableLayers.length === 0) {
+      availableLayers = [card.background];
+    }
+
+    if (
+      preserveCurrentSelection
+      && this.currentBackgroundSelection?.cardId === card.id
+      && this.currentBackgroundSelection.level === currentLevel
+    ) {
+      const preservedLayer = availableLayers.find((candidate) =>
+        areMediaLayersEqual(candidate, this.currentBackgroundSelection!.layer)
+      );
+      if (preservedLayer) {
+        return preservedLayer;
+      }
+    }
+
+    const selectedLayer = chooseRandomEntry(availableLayers);
+    if (!selectedLayer) {
+      throw new Error(`Card '${card.id}' has no background for dither level ${currentLevel}`);
+    }
+
+    this.currentBackgroundSelection = {
+      cardId: card.id,
+      level: currentLevel,
+      layer: selectedLayer
+    };
+    return selectedLayer;
+  }
+
+  private async buildCardScene(card: Card, backgroundLayer: MediaLayer): Promise<HTMLElement> {
     const [backgroundElement, overlayElement] = await Promise.all([
-      this.createLayerElement(card.background, "card-media card-media-background", `${card.id} background`),
+      this.createLayerElement(backgroundLayer, "card-media card-media-background", `${card.id} background`),
       card.overlay
         ? this.createLayerElement(card.overlay, "card-media card-media-overlay", `${card.id} overlay`)
         : Promise.resolve(null)
@@ -675,7 +832,11 @@ export class HypercardEngine {
     incomingScene.style.removeProperty("transform-origin");
   }
 
-  private async enterCard(cardId: string, transition?: CardTransitionSpec): Promise<void> {
+  private async enterCard(
+    cardId: string,
+    transition?: CardTransitionSpec,
+    options: EnterCardOptions = {}
+  ): Promise<void> {
     const card = this.cardsById.get(cardId);
     if (!card) {
       this.setStatus(`Unknown card '${cardId}'`);
@@ -683,9 +844,15 @@ export class HypercardEngine {
     }
 
     const renderToken = ++this.renderToken;
+    const previousCardId = this.currentCardId;
 
     try {
-      const scene = await this.buildCardScene(card);
+      const backgroundLayer = await this.resolveBackgroundLayer(
+        card,
+        options.preserveBackgroundSelection ?? false,
+        options.advanceProgression ?? false
+      );
+      const scene = await this.buildCardScene(card, backgroundLayer);
 
       if (renderToken !== this.renderToken) {
         return;
@@ -709,6 +876,9 @@ export class HypercardEngine {
         this.stage.replaceChildren(scene);
       }
 
+      if (options.advanceProgression && previousCardId && previousCardId !== card.id) {
+        this.navigationStep += 1;
+      }
       this.currentCardId = card.id;
       this.setStatus("");
       if (card.buttons && card.buttons.length > 0) {
@@ -738,7 +908,7 @@ export class HypercardEngine {
     }
     await executeAction(action, {
       goToCard: async (nextCardId, transition) => {
-        await this.enterCard(nextCardId, transition);
+        await this.enterCard(nextCardId, transition, { advanceProgression: true });
       }
     });
   }
@@ -748,7 +918,7 @@ export class HypercardEngine {
       const previousCard = this.currentCardId;
       await this.loadStack(false);
       if (previousCard && this.cardsById.has(previousCard)) {
-        await this.enterCard(previousCard);
+        await this.enterCard(previousCard, undefined, { preserveBackgroundSelection: true });
       } else if (this.stack?.initialCardId && this.cardsById.has(this.stack.initialCardId)) {
         await this.enterCard(this.stack.initialCardId);
       }
@@ -756,18 +926,19 @@ export class HypercardEngine {
     }
 
     this.invalidateAsset(payload.path);
+    this.invalidateBackgroundFolderAssets(payload.path);
 
     const currentCard = this.currentCardId ? this.cardsById.get(this.currentCardId) : null;
     if (!currentCard) {
       return;
     }
 
-    const usesChangedAsset = getReferencedAssetPaths(currentCard).includes(payload.path);
+    const usesChangedAsset = getReferencedAssetPaths(currentCard, this.currentBackgroundSelection?.layer).includes(payload.path);
     if (!usesChangedAsset) {
       return;
     }
 
-    await this.enterCard(currentCard.id);
+    await this.enterCard(currentCard.id, undefined, { preserveBackgroundSelection: true });
     this.setStatus(`Card: ${currentCard.id}\nAsset reloaded: ${payload.path}`);
   }
 
@@ -781,6 +952,7 @@ export class HypercardEngine {
       URL.revokeObjectURL(url);
     }
     this.assetUrlCache.clear();
+    this.backgroundFolderCache.clear();
     void this.audio.stop();
   }
 }

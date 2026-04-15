@@ -133,6 +133,29 @@ describe("validateStack", () => {
     expect(result.ok).toBe(true);
   });
 
+  it("accepts cards with a background folder override", () => {
+    const result = validateStack({
+      initialCardId: "animated",
+      cards: [
+        {
+          id: "animated",
+          background: {
+            kind: "video",
+            src: "assets/video/fallback.webm"
+          }
+          ,
+          backgroundFolder: "assets/backgrounds"
+        }
+      ]
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.cards[0]?.background.src).toBe("assets/video/fallback.webm");
+      expect(result.value.cards[0]?.backgroundFolder).toBe("assets/backgrounds");
+    }
+  });
+
   it("rejects missing required fields", () => {
     const result = validateStack({
       cards: []
@@ -161,6 +184,43 @@ describe("validateStack", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.errors.join("\n")).toContain("cards[0].background.kind must be 'image' or 'video'");
+    }
+  });
+
+  it("rejects cards without a background source", () => {
+    const result = validateStack({
+      initialCardId: "pool",
+      cards: [
+        {
+          id: "pool"
+        }
+      ]
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.join("\n")).toContain("cards[0].background must be an object");
+    }
+  });
+
+  it("rejects invalid background folders", () => {
+    const result = validateStack({
+      initialCardId: "pool",
+      cards: [
+        {
+          id: "pool",
+          background: {
+            kind: "image",
+            src: "assets/images/pool.png"
+          },
+          backgroundFolder: ""
+        }
+      ]
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.join("\n")).toContain("cards[0].backgroundFolder must be a non-empty string");
     }
   });
 

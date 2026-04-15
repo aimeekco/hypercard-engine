@@ -85,6 +85,7 @@
     {
       "id": "pool_overlook",
       "styleLevel": "modern",
+      "backgroundFolder": "assets/backgrounds",
       "background": {
         "kind": "video",
         "src": "assets/images/scene_1_dither.mov"
@@ -125,6 +126,7 @@
     {
       "id": "shallow_bend",
       "styleLevel": "modern",
+      "backgroundFolder": "assets/backgrounds",
       "background": {
         "kind": "video",
         "src": "assets/images/scene_1_dither.mov"
@@ -160,6 +162,7 @@
     {
       "id": "reeds_channel",
       "styleLevel": "transitional",
+      "backgroundFolder": "assets/backgrounds",
       "background": {
         "kind": "video",
         "src": "assets/images/scene_1_dither.mov"
@@ -200,6 +203,7 @@
     {
       "id": "deep_channel",
       "styleLevel": "hypercard",
+      "backgroundFolder": "assets/backgrounds",
       "background": {
         "kind": "video",
         "src": "assets/images/scene_2_dither.mov"
@@ -239,6 +243,7 @@
     {
       "id": "ending_surface",
       "styleLevel": "modern",
+      "backgroundFolder": "assets/backgrounds",
       "background": {
         "kind": "video",
         "src": "assets/images/scene_1_dither.mov"
@@ -263,6 +268,7 @@
     {
       "id": "ending_current",
       "styleLevel": "transitional",
+      "backgroundFolder": "assets/backgrounds",
       "background": {
         "kind": "video",
         "src": "assets/images/scene_1_dither.mov"
@@ -287,6 +293,7 @@
     {
       "id": "ending_depths",
       "styleLevel": "hypercard",
+      "backgroundFolder": "assets/backgrounds",
       "background": {
         "kind": "video",
         "src": "assets/images/scene_2.5_dither.mov"

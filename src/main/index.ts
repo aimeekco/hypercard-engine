@@ -72,6 +72,23 @@ function setupIpcHandlers(root: string): void {
     const abs = ensurePathInRoot(root, relativePath);
     return fs.readFile(abs);
   });
+
+  ipcMain.handle(IPC_CHANNELS.listFiles, async (_event, relativeDir: string) => {
+    const abs = ensurePathInRoot(root, relativeDir);
+    try {
+      const entries = await fs.readdir(abs, { withFileTypes: true });
+      const normalizedDir = relativeDir.split(path.sep).join(path.posix.sep);
+      return entries
+        .filter((entry) => entry.isFile())
+        .map((entry) => path.posix.join(normalizedDir, entry.name))
+        .sort((left, right) => left.localeCompare(right));
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        return [];
+      }
+      throw error;
+    }
+  });
 }
 
 function broadcastFileChanged(payload: FileChangedPayload): void {
