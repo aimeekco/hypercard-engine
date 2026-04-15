@@ -94,6 +94,11 @@
         "kind": "video",
         "src": "assets/images/back_view_dither_render.webm"
       },
+      "audio": {
+        "fin": {
+          "source": "../fin/examples/weird_fishes.metl"
+        }
+      },
       "arrows": [
         {
           "id": "to-shallow-bend",
@@ -135,6 +140,11 @@
         "kind": "video",
         "src": "assets/images/back_view_dither_render.webm"
       },
+      "audio": {
+        "fin": {
+          "source": "../fin/examples/weird_fishes.metl"
+        }
+      },
       "arrows": [
         {
           "id": "return-to-overlook",
@@ -170,6 +180,11 @@
       "overlay": {
         "kind": "video",
         "src": "assets/images/back_view_dither_render.webm"
+      },
+      "audio": {
+        "fin": {
+          "source": "../fin/examples/weird_fishes.metl"
+        }
       },
       "arrows": [
         {
@@ -216,6 +231,11 @@
           "y": 58
         }
       },
+      "audio": {
+        "fin": {
+          "source": "../fin/examples/weird_fishes.metl"
+        }
+      },
       "arrows": [
         {
           "id": "to-reeds",
@@ -256,6 +276,11 @@
           "y": 58
         }
       },
+      "audio": {
+        "fin": {
+          "source": "../fin/examples/weird_fishes.metl"
+        }
+      },
       "buttons": [
         {
           "id": "restart-surface",
@@ -281,6 +306,11 @@
           "y": 58
         }
       },
+      "audio": {
+        "fin": {
+          "source": "../fin/examples/weird_fishes.metl"
+        }
+      },
       "buttons": [
         {
           "id": "restart-current",
@@ -304,6 +334,11 @@
         "position": {
           "x": 50,
           "y": 58
+        }
+      },
+      "audio": {
+        "fin": {
+          "source": "../fin/examples/weird_fishes.metl"
         }
       },
       "buttons": [

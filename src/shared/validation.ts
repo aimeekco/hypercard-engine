@@ -1,10 +1,12 @@
 import type {
   ArrowLink,
+  AudioSpec,
   ButtonLink,
   Card,
   CardTransitionSpec,
   CardStyleLevel,
   ClickTarget,
+  DitherLevel,
   DragTarget,
   MediaKind,
   MediaLayer,
@@ -14,6 +16,7 @@ import type {
   StackValidationResult,
   TitleSpec
 } from "./types";
+import { DITHER_LEVEL_VALUES } from "./types";
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -83,6 +86,94 @@ function parseMediaLayer(value: unknown, path: string, errors: string[]): MediaL
     kind: value.kind,
     src: value.src,
     position
+  };
+}
+
+function isDitherLevel(value: string): value is `${DitherLevel}` {
+  return DITHER_LEVEL_VALUES.some((level) => String(level) === value);
+}
+
+function parseAudio(value: unknown, path: string, errors: string[]): AudioSpec | undefined | null {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!isObject(value)) {
+    errors.push(`${path} must be an object`);
+    return null;
+  }
+
+  const ambient = value.ambient === undefined
+    ? undefined
+    : isString(value.ambient)
+      ? value.ambient
+      : null;
+  if (value.ambient !== undefined && !isString(value.ambient)) {
+    errors.push(`${path}.ambient must be a non-empty string`);
+  }
+
+  let fin: AudioSpec["fin"] | undefined;
+  if (value.fin !== undefined) {
+    if (!isObject(value.fin)) {
+      errors.push(`${path}.fin must be an object`);
+      return null;
+    }
+    if (!isString(value.fin.source)) {
+      errors.push(`${path}.fin.source must be a non-empty string`);
+      return null;
+    }
+
+    let layerMuteMap: NonNullable<AudioSpec["fin"]>["layerMuteMap"] | undefined;
+    if (value.fin.layerMuteMap !== undefined) {
+      if (!isObject(value.fin.layerMuteMap)) {
+        errors.push(`${path}.fin.layerMuteMap must be an object`);
+        return null;
+      }
+
+      const parsedLayerMuteMap: NonNullable<AudioSpec["fin"]>["layerMuteMap"] = {};
+      for (const [rawKey, rawLayers] of Object.entries(value.fin.layerMuteMap)) {
+        if (!isDitherLevel(rawKey)) {
+          errors.push(`${path}.fin.layerMuteMap has unsupported level '${rawKey}'`);
+          continue;
+        }
+        if (!Array.isArray(rawLayers) || rawLayers.some((layer) => !isString(layer))) {
+          errors.push(`${path}.fin.layerMuteMap.${rawKey} must be an array of non-empty strings`);
+          continue;
+        }
+
+        parsedLayerMuteMap[Number(rawKey) as DitherLevel] = [...rawLayers];
+      }
+      layerMuteMap = parsedLayerMuteMap;
+    }
+
+    fin = {
+      source: value.fin.source,
+      layerMuteMap
+    };
+  }
+
+  if (
+    value.volume !== undefined
+    && (typeof value.volume !== "number" || !Number.isFinite(value.volume) || value.volume < 0)
+  ) {
+    errors.push(`${path}.volume must be a non-negative number`);
+  }
+  if (value.loop !== undefined && typeof value.loop !== "boolean") {
+    errors.push(`${path}.loop must be a boolean`);
+  }
+
+  if (!ambient && !fin) {
+    errors.push(`${path} must include ambient or fin audio`);
+    return null;
+  }
+  if (ambient === null) {
+    return null;
+  }
+
+  return {
+    ambient,
+    fin,
+    volume: typeof value.volume === "number" ? value.volume : undefined,
+    loop: typeof value.loop === "boolean" ? value.loop : undefined
   };
 }
 
@@ -329,6 +420,7 @@ function parseCard(value: unknown, path: string, errors: string[]): Card | null 
   const overlay = value.overlay === undefined
     ? undefined
     : parseMediaLayer(value.overlay, `${path}.overlay`, errors);
+  const audio = parseAudio(value.audio, `${path}.audio`, errors);
   if (value.backgroundFolder !== undefined && !isString(value.backgroundFolder)) {
     errors.push(`${path}.backgroundFolder must be a non-empty string`);
   }
@@ -384,6 +476,7 @@ function parseCard(value: unknown, path: string, errors: string[]): Card | null 
     || title === null
     || !background
     || overlay === null
+    || audio === null
     || buttons === null
     || clickTargets === null
     || dragTargets === null
@@ -391,14 +484,6 @@ function parseCard(value: unknown, path: string, errors: string[]): Card | null 
   ) {
     return null;
   }
-
-  const audio = isObject(value.audio) && isString(value.audio.ambient)
-    ? {
-        ambient: value.audio.ambient,
-        volume: typeof value.audio.volume === "number" ? value.audio.volume : undefined,
-        loop: typeof value.audio.loop === "boolean" ? value.audio.loop : undefined
-      }
-    : undefined;
 
   return {
     id: value.id,
