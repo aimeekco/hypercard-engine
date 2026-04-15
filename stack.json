@@ -97,20 +97,17 @@
         {
           "id": "to-shallow-bend",
           "direction": "left",
-          "targetCardId": "shallow_bend",
-          "label": "Scout the shallows"
+          "targetCardId": "shallow_bend"
         },
         {
           "id": "to-reeds",
           "direction": "right",
-          "targetCardId": "reeds_channel",
-          "label": "Slip into the reeds"
+          "targetCardId": "reeds_channel"
         },
         {
           "id": "to-deep-channel",
           "direction": "forward",
           "targetCardId": "deep_channel",
-          "label": "Push forward",
           "transition": {
             "kind": "zoom",
             "focusBounds": {
@@ -129,25 +126,23 @@
       "id": "shallow_bend",
       "styleLevel": "modern",
       "background": {
-        "kind": "image",
-        "src": "assets/images/pool-overlook.svg"
+        "kind": "video",
+        "src": "assets/images/scene_1_dither.mov"
       },
       "overlay": {
         "kind": "video",
-        "src": "assets/images/left_view_dither_render.webm"
+        "src": "assets/images/back_view_dither_render.webm"
       },
       "arrows": [
         {
           "id": "return-to-overlook",
           "direction": "right",
-          "targetCardId": "pool_overlook",
-          "label": "Return to the overlook"
+          "targetCardId": "pool_overlook"
         },
         {
           "id": "to-surface-ending",
           "direction": "forward",
           "targetCardId": "ending_surface",
-          "label": "Stay in the light",
           "transition": {
             "kind": "zoom",
             "focusBounds": {
@@ -166,31 +161,28 @@
       "id": "reeds_channel",
       "styleLevel": "transitional",
       "background": {
-        "kind": "image",
-        "src": "assets/images/reeds-channel.svg"
+        "kind": "video",
+        "src": "assets/images/scene_1_dither.mov"
       },
       "overlay": {
         "kind": "video",
-        "src": "assets/images/right_view_dither_render.webm"
+        "src": "assets/images/back_view_dither_render.webm"
       },
       "arrows": [
         {
           "id": "to-overlook",
           "direction": "left",
-          "targetCardId": "pool_overlook",
-          "label": "Back to the overlook"
+          "targetCardId": "pool_overlook"
         },
         {
           "id": "to-deep-channel",
           "direction": "right",
-          "targetCardId": "deep_channel",
-          "label": "Edge toward the deep channel"
+          "targetCardId": "deep_channel"
         },
         {
           "id": "to-current-ending",
           "direction": "forward",
           "targetCardId": "ending_current",
-          "label": "Follow the current",
           "transition": {
             "kind": "zoom",
             "focusBounds": {
@@ -224,14 +216,12 @@
         {
           "id": "to-reeds",
           "direction": "left",
-          "targetCardId": "reeds_channel",
-          "label": "Back to the reeds"
+          "targetCardId": "reeds_channel"
         },
         {
           "id": "to-depths-ending",
           "direction": "forward",
           "targetCardId": "ending_depths",
-          "label": "Descend",
           "transition": {
             "kind": "zoom",
             "focusBounds": {
@@ -249,13 +239,17 @@
     {
       "id": "ending_surface",
       "styleLevel": "modern",
-      "title": {
-        "heading": "Ending I: Surface Glimmer",
-        "subheading": "You stayed where the light broke the water. The stack lets you go."
-      },
       "background": {
-        "kind": "image",
-        "src": "assets/images/pool-overlook.svg"
+        "kind": "video",
+        "src": "assets/images/scene_1_dither.mov"
+      },
+      "overlay": {
+        "kind": "video",
+        "src": "assets/images/back_view_dither_render.webm",
+        "position": {
+          "x": 50,
+          "y": 58
+        }
       },
       "buttons": [
         {
@@ -269,17 +263,13 @@
     {
       "id": "ending_current",
       "styleLevel": "transitional",
-      "title": {
-        "heading": "Ending II: Current Memory",
-        "subheading": "You let the flow decide for you and came out somewhere almost familiar."
-      },
       "background": {
-        "kind": "image",
-        "src": "assets/images/reeds-channel.svg"
+        "kind": "video",
+        "src": "assets/images/scene_1_dither.mov"
       },
       "overlay": {
-        "kind": "image",
-        "src": "assets/images/trout-overlay.svg",
+        "kind": "video",
+        "src": "assets/images/back_view_dither_render.webm",
         "position": {
           "x": 50,
           "y": 58
@@ -297,17 +287,13 @@
     {
       "id": "ending_depths",
       "styleLevel": "hypercard",
-      "title": {
-        "heading": "Ending III: Kept by the Depths",
-        "subheading": "The deeper route holds on to you. This ending does not feel accidental."
-      },
       "background": {
-        "kind": "image",
-        "src": "assets/images/reeds-channel.svg"
+        "kind": "video",
+        "src": "assets/images/scene_2.5_dither.mov"
       },
       "overlay": {
-        "kind": "image",
-        "src": "assets/images/trout-overlay.svg",
+        "kind": "video",
+        "src": "assets/images/back_view_dither_render.webm",
         "position": {
           "x": 50,
           "y": 58
