@@ -40,3 +40,7 @@ export function getMutedLayersForLevel(
 export function hasFinAudio(audio?: AudioSpec): audio is AudioSpec & { fin: FinAudioSpec } {
   return Boolean(audio?.fin);
 }
+
+export function resolveAudioSpec(stackAudio?: AudioSpec, cardAudio?: AudioSpec): AudioSpec | undefined {
+  return cardAudio ?? stackAudio;
+}

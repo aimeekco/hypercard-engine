@@ -122,6 +122,7 @@ export type Card = {
 
 export type StackDefinition = {
   initialCardId: string;
+  audio?: AudioSpec;
   cards: Card[];
 };
 

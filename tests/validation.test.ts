@@ -415,12 +415,24 @@ describe("validateStack", () => {
   it("accepts fin-backed audio definitions", () => {
     const result = validateStack({
       initialCardId: "pool",
+      audio: {
+        fin: {
+          source: "../fin/examples/weird_fishes.metl"
+        }
+      },
       cards: [
         {
           id: "pool",
           background: {
             kind: "image",
             src: "assets/images/pool.png"
+          }
+        },
+        {
+          id: "deep",
+          background: {
+            kind: "image",
+            src: "assets/images/deep.png"
           },
           audio: {
             fin: {
@@ -437,8 +449,9 @@ describe("validateStack", () => {
 
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.value.cards[0]?.audio?.fin?.source).toBe("../fin/examples/weird_fishes.metl");
-      expect(result.value.cards[0]?.audio?.fin?.layerMuteMap?.[0.5]).toEqual(["supersquare", "supersnare"]);
+      expect(result.value.audio?.fin?.source).toBe("../fin/examples/weird_fishes.metl");
+      expect(result.value.cards[0]?.audio).toBeUndefined();
+      expect(result.value.cards[1]?.audio?.fin?.layerMuteMap?.[0.5]).toEqual(["supersquare", "supersnare"]);
     }
   });
 

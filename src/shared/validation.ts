@@ -508,6 +508,7 @@ export function validateStack(raw: unknown): StackValidationResult {
   if (!isString(raw.initialCardId)) {
     errors.push("initialCardId is required");
   }
+  const audio = parseAudio(raw.audio, "audio", errors);
 
   let cards: Card[] = [];
   if (!Array.isArray(raw.cards)) {
@@ -550,7 +551,7 @@ export function validateStack(raw: unknown): StackValidationResult {
     }
   }
 
-  if (errors.length > 0 || !isString(raw.initialCardId)) {
+  if (errors.length > 0 || !isString(raw.initialCardId) || audio === null) {
     return { ok: false, errors };
   }
 
@@ -558,6 +559,7 @@ export function validateStack(raw: unknown): StackValidationResult {
     ok: true,
     value: {
       initialCardId: raw.initialCardId,
+      audio,
       cards
     }
   };
