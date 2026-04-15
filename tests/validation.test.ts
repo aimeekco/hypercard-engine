@@ -411,4 +411,75 @@ describe("validateStack", () => {
       expect(result.errors.join("\n")).toContain("card 'pool' drag target 'insert-disk' points to missing card 'missing'");
     }
   });
+
+  it("accepts fin-backed audio definitions", () => {
+    const result = validateStack({
+      initialCardId: "pool",
+      audio: {
+        fin: {
+          source: "../fin/examples/weird_fishes.metl"
+        }
+      },
+      cards: [
+        {
+          id: "pool",
+          background: {
+            kind: "image",
+            src: "assets/images/pool.png"
+          }
+        },
+        {
+          id: "deep",
+          background: {
+            kind: "image",
+            src: "assets/images/deep.png"
+          },
+          audio: {
+            fin: {
+              source: "../fin/examples/weird_fishes.metl",
+              layerMuteMap: {
+                0.25: ["supersquare"],
+                0.5: ["supersquare", "supersnare"]
+              }
+            }
+          }
+        }
+      ]
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.audio?.fin?.source).toBe("../fin/examples/weird_fishes.metl");
+      expect(result.value.cards[0]?.audio).toBeUndefined();
+      expect(result.value.cards[1]?.audio?.fin?.layerMuteMap?.[0.5]).toEqual(["supersquare", "supersnare"]);
+    }
+  });
+
+  it("rejects fin audio with unsupported corruption levels", () => {
+    const result = validateStack({
+      initialCardId: "pool",
+      cards: [
+        {
+          id: "pool",
+          background: {
+            kind: "image",
+            src: "assets/images/pool.png"
+          },
+          audio: {
+            fin: {
+              source: "../fin/examples/weird_fishes.metl",
+              layerMuteMap: {
+                0.1: ["supersquare"]
+              }
+            }
+          }
+        }
+      ]
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.join("\n")).toContain("cards[0].audio.fin.layerMuteMap has unsupported level '0.1'");
+    }
+  });
 });

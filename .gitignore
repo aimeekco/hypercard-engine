@@ -6,3 +6,4 @@ dist-electron/
 .DS_Store
 coverage/
 assets/
+.hypercard-runtime/

@@ -1,4 +1,4 @@
-import type { FileChangedPayload } from "@shared/types";
+import type { DitherLevel, FileChangedPayload, FinAudioSpec } from "@shared/types";
 
 declare global {
   interface Window {
@@ -6,6 +6,8 @@ declare global {
       readStack: () => Promise<unknown>;
       readBinary: (relativePath: string) => Promise<Uint8Array>;
       listFiles: (relativeDir: string) => Promise<string[]>;
+      musicStartOrSync: (spec: FinAudioSpec, level: DitherLevel) => Promise<void>;
+      musicStop: () => Promise<void>;
       onFileChanged: (callback: (payload: FileChangedPayload) => void) => () => void;
     };
   }

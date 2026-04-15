@@ -1,5 +1,10 @@
 {
   "initialCardId": "boot_mac",
+  "audio": {
+    "fin": {
+      "source": "../fin/examples/weird_fishes.metl"
+    }
+  },
   "cards": [
     {
       "id": "boot_mac",

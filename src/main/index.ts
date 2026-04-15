@@ -4,10 +4,12 @@ import { promises as fs } from "node:fs";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { IPC_CHANNELS } from "@shared/ipc";
-import type { FileChangedPayload } from "@shared/types";
+import type { DitherLevel, FileChangedPayload, FinAudioSpec } from "@shared/types";
+import { FinMusicController } from "./finMusic";
 
 let mainWindow: BrowserWindow | null = null;
 const watchers: FSWatcher[] = [];
+let musicController: FinMusicController | null = null;
 
 function getProjectRoot(): string {
   if (process.env.HYPERCARD_ROOT) {
@@ -89,6 +91,17 @@ function setupIpcHandlers(root: string): void {
       throw error;
     }
   });
+
+  ipcMain.handle(IPC_CHANNELS.musicStartOrSync, async (_event, spec: FinAudioSpec, level: DitherLevel) => {
+    if (!musicController) {
+      musicController = new FinMusicController(root);
+    }
+    await musicController.startOrSync(spec, level);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.musicStop, async () => {
+    await musicController?.stop();
+  });
 }
 
 function broadcastFileChanged(payload: FileChangedPayload): void {
@@ -150,5 +163,6 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", async () => {
+  await musicController?.stop();
   await Promise.all(watchers.map((watcher) => watcher.close()));
 });

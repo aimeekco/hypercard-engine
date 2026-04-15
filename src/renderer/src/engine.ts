@@ -4,6 +4,7 @@ import {
   getDitherFolderCandidates,
   getDitherLevelForStep
 } from "@shared/backgroundBank";
+import { hasFinAudio, resolveAudioSpec } from "@shared/audio";
 import { getArrowNavigationTarget } from "@shared/navigation";
 import type {
   Action,
@@ -141,7 +142,11 @@ function waitForVideoLoad(video: HTMLVideoElement): Promise<void> {
   });
 }
 
-function getReferencedAssetPaths(card: Card, selectedBackgroundLayer?: MediaLayer | null): string[] {
+function getReferencedAssetPaths(
+  card: Card,
+  selectedBackgroundLayer?: MediaLayer | null,
+  audio?: Card["audio"]
+): string[] {
   const paths = [card.background.src];
   if (selectedBackgroundLayer && selectedBackgroundLayer.src !== card.background.src) {
     paths.push(selectedBackgroundLayer.src);
@@ -152,8 +157,8 @@ function getReferencedAssetPaths(card: Card, selectedBackgroundLayer?: MediaLaye
   for (const dragTarget of card.dragTargets ?? []) {
     paths.push(dragTarget.src);
   }
-  if (card.audio?.ambient) {
-    paths.push(card.audio.ambient);
+  if (audio?.ambient) {
+    paths.push(audio.ambient);
   }
   return Array.from(new Set(paths));
 }
@@ -754,6 +759,26 @@ export class HypercardEngine {
     return scene;
   }
 
+  private async playCardAudio(card: Card, level: DitherLevel): Promise<void> {
+    const audio = resolveAudioSpec(this.stack?.audio, card.audio);
+    if (hasFinAudio(audio)) {
+      await this.audio.stop();
+      await window.hypercard.musicStartOrSync(audio.fin, level);
+      return;
+    }
+
+    await window.hypercard.musicStop();
+    if (audio?.ambient) {
+      await this.audio.playAmbient(audio.ambient, {
+        volume: audio.volume,
+        loop: audio.loop
+      });
+      return;
+    }
+
+    await this.audio.stop();
+  }
+
   private async animateTransition(outgoingScene: HTMLElement, incomingScene: HTMLElement, transition: CardTransitionSpec): Promise<void> {
     const stageRect = this.stage.getBoundingClientRect();
     const localStageRect = new DOMRect(0, 0, Math.max(1, stageRect.width), Math.max(1, stageRect.height));
@@ -885,16 +910,13 @@ export class HypercardEngine {
         scene.querySelector<HTMLButtonElement>(".card-button:not(:disabled)")?.focus();
       }
 
-      if (card.audio?.ambient) {
-        await this.audio.playAmbient(card.audio.ambient, {
-          volume: card.audio.volume,
-          loop: card.audio.loop
-        }).catch((error) => {
-          console.warn("Audio load failed", error);
-        });
-      } else {
-        await this.audio.stop();
-      }
+      const currentLevel = this.currentBackgroundSelection?.level ?? this.getDitherLevelForRender(
+        card.id,
+        options.advanceProgression ?? false
+      );
+      await this.playCardAudio(card, currentLevel).catch((error) => {
+        console.warn("Audio load failed", error);
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.setStatus(`Card load failed: ${card.id}\n${message}`);
@@ -933,7 +955,11 @@ export class HypercardEngine {
       return;
     }
 
-    const usesChangedAsset = getReferencedAssetPaths(currentCard, this.currentBackgroundSelection?.layer).includes(payload.path);
+    const usesChangedAsset = getReferencedAssetPaths(
+      currentCard,
+      this.currentBackgroundSelection?.layer,
+      resolveAudioSpec(this.stack?.audio, currentCard.audio)
+    ).includes(payload.path);
     if (!usesChangedAsset) {
       return;
     }
@@ -953,6 +979,7 @@ export class HypercardEngine {
     }
     this.assetUrlCache.clear();
     this.backgroundFolderCache.clear();
+    void window.hypercard.musicStop();
     void this.audio.stop();
   }
 }

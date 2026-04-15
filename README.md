@@ -1,4 +1,4 @@
-# HyperCard Engine MVP
+# HyperCard Engine
 
 Electron + Three.js desktop engine with 1-bit post-processing, local glTF hot-reload, JSON card routing, raycast hotspots, animation state switching, and lo-fi ambient audio.
 
@@ -36,6 +36,7 @@ npm run start
 - Model/audio/stack updates hot-reload while the app is running.
 - Cards can branch with `left`, `right`, `forward`, `up`, and `down` arrows by pointing each arrow at a different `targetCardId`.
 - The sample `stack.json` now demonstrates a small branching path with three distinct endings.
+- You can configure music globally with top-level `stack.json` `audio`, and override it per-card with `card.audio` when needed. For `fin`-backed music, set `audio.fin.source` to a `.metl` file. HyperCard writes a derived live score under `.hypercard-runtime/music`, auto-starts SuperDirt through `fin superdirt`, and keeps the live score synced as corruption changes. Set `HYPERCARD_FIN_BIN` if the `fin` binary is not on your `PATH`.
 
 ## Standalone Dither Engine (PNG)
 

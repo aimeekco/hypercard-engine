@@ -1,9 +1,3 @@
-export type AudioSpec = {
-  ambient: string;
-  volume?: number;
-  loop?: boolean;
-};
-
 export type MediaKind = "image" | "video";
 
 export type MediaLayer = {
@@ -14,6 +8,19 @@ export type MediaLayer = {
 
 export const DITHER_LEVEL_VALUES = [0, 0.25, 0.5, 0.75, 1] as const;
 export type DitherLevel = typeof DITHER_LEVEL_VALUES[number];
+export type DitherLevelMap<T> = Partial<Record<DitherLevel, T>>;
+
+export type FinAudioSpec = {
+  source: string;
+  layerMuteMap?: DitherLevelMap<string[]>;
+};
+
+export type AudioSpec = {
+  ambient?: string;
+  fin?: FinAudioSpec;
+  volume?: number;
+  loop?: boolean;
+};
 
 export type ArrowDirection = "left" | "right" | "up" | "down" | "forward";
 export type CardStyleLevel = "modern" | "transitional" | "hypercard";
@@ -115,6 +122,7 @@ export type Card = {
 
 export type StackDefinition = {
   initialCardId: string;
+  audio?: AudioSpec;
   cards: Card[];
 };
 
