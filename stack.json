@@ -112,7 +112,7 @@
         },
         {
           "id": "to-deep-channel",
-          "direction": "forward",
+          "direction": "up",
           "targetCardId": "deep_channel",
           "transition": {
             "kind": "zoom",
@@ -147,8 +147,13 @@
           "targetCardId": "pool_overlook"
         },
         {
+          "id": "to-lily-canopy",
+          "direction": "left",
+          "targetCardId": "lily_canopy"
+        },
+        {
           "id": "to-surface-ending",
-          "direction": "forward",
+          "direction": "up",
           "targetCardId": "ending_surface",
           "transition": {
             "kind": "zoom",
@@ -183,13 +188,13 @@
           "targetCardId": "pool_overlook"
         },
         {
-          "id": "to-deep-channel",
+          "id": "to-eel-passage",
           "direction": "right",
-          "targetCardId": "deep_channel"
+          "targetCardId": "eel_passage"
         },
         {
           "id": "to-current-ending",
-          "direction": "forward",
+          "direction": "up",
           "targetCardId": "ending_current",
           "transition": {
             "kind": "zoom",
@@ -223,13 +228,18 @@
       },
       "arrows": [
         {
-          "id": "to-reeds",
+          "id": "to-eel-passage",
           "direction": "left",
-          "targetCardId": "reeds_channel"
+          "targetCardId": "eel_passage"
+        },
+        {
+          "id": "to-abyssal-gate",
+          "direction": "right",
+          "targetCardId": "abyssal_gate"
         },
         {
           "id": "to-depths-ending",
-          "direction": "forward",
+          "direction": "up",
           "targetCardId": "ending_depths",
           "transition": {
             "kind": "zoom",
@@ -241,6 +251,131 @@
             },
             "durationMs": 1800,
             "entryScale": 1.12
+          }
+        }
+      ]
+    },
+    {
+      "id": "lily_canopy",
+      "styleLevel": "modern",
+      "backgroundFolder": "assets/backgrounds",
+      "background": {
+        "kind": "video",
+        "src": "assets/images/scene_1_dither.mov"
+      },
+      "overlay": {
+        "kind": "video",
+        "src": "assets/images/back_view_dither_render.webm",
+        "position": {
+          "x": 46,
+          "y": 36
+        }
+      },
+      "arrows": [
+        {
+          "id": "to-shallow-bend-from-canopy",
+          "direction": "right",
+          "targetCardId": "shallow_bend"
+        },
+        {
+          "id": "to-canopy-ending",
+          "direction": "up",
+          "targetCardId": "ending_canopy",
+          "transition": {
+            "kind": "zoom",
+            "focusBounds": {
+              "x": 20,
+              "y": 8,
+              "width": 54,
+              "height": 42
+            },
+            "durationMs": 1500,
+            "entryScale": 1.08
+          }
+        }
+      ]
+    },
+    {
+      "id": "eel_passage",
+      "styleLevel": "transitional",
+      "backgroundFolder": "assets/backgrounds",
+      "background": {
+        "kind": "video",
+        "src": "assets/images/scene_1_dither.mov"
+      },
+      "overlay": {
+        "kind": "video",
+        "src": "assets/images/back_view_dither_render.webm",
+        "position": {
+          "x": 55,
+          "y": 63
+        }
+      },
+      "arrows": [
+        {
+          "id": "to-reeds-from-eel",
+          "direction": "left",
+          "targetCardId": "reeds_channel"
+        },
+        {
+          "id": "to-deep-channel-from-eel",
+          "direction": "right",
+          "targetCardId": "deep_channel"
+        },
+        {
+          "id": "to-silt-ending-from-eel",
+          "direction": "up",
+          "targetCardId": "ending_silt",
+          "transition": {
+            "kind": "zoom",
+            "focusBounds": {
+              "x": 27,
+              "y": 17,
+              "width": 44,
+              "height": 40
+            },
+            "durationMs": 1680,
+            "entryScale": 1.09
+          }
+        }
+      ]
+    },
+    {
+      "id": "abyssal_gate",
+      "styleLevel": "hypercard",
+      "backgroundFolder": "assets/backgrounds",
+      "background": {
+        "kind": "video",
+        "src": "assets/images/scene_2.5_dither.mov"
+      },
+      "overlay": {
+        "kind": "video",
+        "src": "assets/images/back_view_dither_render.webm",
+        "position": {
+          "x": 52,
+          "y": 70
+        }
+      },
+      "arrows": [
+        {
+          "id": "to-deep-channel-from-abyss",
+          "direction": "left",
+          "targetCardId": "deep_channel"
+        },
+        {
+          "id": "to-abyss-ending",
+          "direction": "up",
+          "targetCardId": "ending_abyss",
+          "transition": {
+            "kind": "zoom",
+            "focusBounds": {
+              "x": 26,
+              "y": 22,
+              "width": 46,
+              "height": 50
+            },
+            "durationMs": 1820,
+            "entryScale": 1.14
           }
         }
       ]
@@ -264,6 +399,31 @@
       "buttons": [
         {
           "id": "restart-surface",
+          "label": "Restart",
+          "targetCardId": "boot_mac",
+          "variant": "secondary"
+        }
+      ]
+    },
+    {
+      "id": "ending_canopy",
+      "styleLevel": "modern",
+      "backgroundFolder": "assets/backgrounds",
+      "background": {
+        "kind": "video",
+        "src": "assets/images/scene_1_dither.mov"
+      },
+      "overlay": {
+        "kind": "video",
+        "src": "assets/images/back_view_dither_render.webm",
+        "position": {
+          "x": 45,
+          "y": 32
+        }
+      },
+      "buttons": [
+        {
+          "id": "restart-canopy",
           "label": "Restart",
           "targetCardId": "boot_mac",
           "variant": "secondary"
@@ -296,6 +456,31 @@
       ]
     },
     {
+      "id": "ending_silt",
+      "styleLevel": "transitional",
+      "backgroundFolder": "assets/backgrounds",
+      "background": {
+        "kind": "video",
+        "src": "assets/images/scene_2_dither.mov"
+      },
+      "overlay": {
+        "kind": "video",
+        "src": "assets/images/back_view_dither_render.webm",
+        "position": {
+          "x": 48,
+          "y": 68
+        }
+      },
+      "buttons": [
+        {
+          "id": "restart-silt",
+          "label": "Restart",
+          "targetCardId": "boot_mac",
+          "variant": "secondary"
+        }
+      ]
+    },
+    {
       "id": "ending_depths",
       "styleLevel": "hypercard",
       "backgroundFolder": "assets/backgrounds",
@@ -314,6 +499,31 @@
       "buttons": [
         {
           "id": "restart-depths",
+          "label": "Restart",
+          "targetCardId": "boot_mac",
+          "variant": "secondary"
+        }
+      ]
+    },
+    {
+      "id": "ending_abyss",
+      "styleLevel": "hypercard",
+      "backgroundFolder": "assets/backgrounds",
+      "background": {
+        "kind": "video",
+        "src": "assets/images/scene_2.5_dither.mov"
+      },
+      "overlay": {
+        "kind": "video",
+        "src": "assets/images/back_view_dither_render.webm",
+        "position": {
+          "x": 52,
+          "y": 72
+        }
+      },
+      "buttons": [
+        {
+          "id": "restart-abyss",
           "label": "Restart",
           "targetCardId": "boot_mac",
           "variant": "secondary"

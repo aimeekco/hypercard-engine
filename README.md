@@ -35,7 +35,8 @@ npm run start
 - Renderer output is forced to strict black/white via custom 1-bit dither shader.
 - Model/audio/stack updates hot-reload while the app is running.
 - Cards can branch with `left`, `right`, `forward`, `up`, and `down` arrows by pointing each arrow at a different `targetCardId`.
-- The sample `stack.json` now demonstrates a small branching path with three distinct endings.
+- Video layers can disable looping with `loop: false` and follow an existing arrow on completion with `onEndedDirection`, for example `background: { "kind": "video", "src": "...", "loop": false, "onEndedDirection": "up" }`.
+- The sample `stack.json` now demonstrates a wider branching path with side routes, vertical navigation, and multiple endings.
 - You can configure music globally with top-level `stack.json` `audio`, and override it per-card with `card.audio` when needed. For `fin`-backed music, set `audio.fin.source` to a `.metl` file. HyperCard writes a derived live score under `.hypercard-runtime/music`, auto-starts SuperDirt through `fin superdirt`, and keeps the live score synced as corruption changes. Set `HYPERCARD_FIN_BIN` if the `fin` binary is not on your `PATH`.
 
 ## Standalone Dither Engine (PNG)

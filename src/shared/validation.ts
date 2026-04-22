@@ -34,6 +34,10 @@ function isStyleLevel(value: unknown): value is CardStyleLevel {
   return value === "modern" || value === "transitional" || value === "hypercard";
 }
 
+function isArrowDirection(value: unknown): value is ArrowLink["direction"] {
+  return value === "left" || value === "right" || value === "up" || value === "down" || value === "forward";
+}
+
 function parsePosition(value: unknown, path: string, errors: string[]): ScreenPosition | undefined | null {
   if (value === undefined) {
     return undefined;
@@ -78,14 +82,40 @@ function parseMediaLayer(value: unknown, path: string, errors: string[]): MediaL
   if (!isString(value.src)) {
     errors.push(`${path}.src is required`);
   }
+  if (value.loop !== undefined && typeof value.loop !== "boolean") {
+    errors.push(`${path}.loop must be a boolean`);
+  }
+  if (value.onEndedDirection !== undefined && !isArrowDirection(value.onEndedDirection)) {
+    errors.push(`${path}.onEndedDirection must be one of left, right, up, down, forward`);
+  }
+  if (value.kind === "image" && value.onEndedDirection !== undefined) {
+    errors.push(`${path}.onEndedDirection is only supported for video layers`);
+  }
+  if (value.kind === "image" && value.loop !== undefined) {
+    errors.push(`${path}.loop is only supported for video layers`);
+  }
+  if (value.onEndedDirection !== undefined && value.loop === true) {
+    errors.push(`${path}.loop cannot be true when onEndedDirection is set`);
+  }
   const position = parsePosition(value.position, `${path}.position`, errors);
-  if (!isMediaKind(value.kind) || !isString(value.src) || position === null) {
+  if (
+    !isMediaKind(value.kind)
+    || !isString(value.src)
+    || position === null
+    || (value.loop !== undefined && typeof value.loop !== "boolean")
+    || (value.onEndedDirection !== undefined && !isArrowDirection(value.onEndedDirection))
+    || (value.kind === "image" && value.onEndedDirection !== undefined)
+    || (value.kind === "image" && value.loop !== undefined)
+    || (value.onEndedDirection !== undefined && value.loop === true)
+  ) {
     return null;
   }
   return {
     kind: value.kind,
     src: value.src,
-    position
+    position,
+    loop: typeof value.loop === "boolean" ? value.loop : undefined,
+    onEndedDirection: isArrowDirection(value.onEndedDirection) ? value.onEndedDirection : undefined
   };
 }
 
@@ -185,7 +215,7 @@ function parseArrow(value: unknown, path: string, errors: string[]): ArrowLink |
   if (!isString(value.id)) {
     errors.push(`${path}.id is required`);
   }
-  if (value.direction !== "left" && value.direction !== "right" && value.direction !== "up" && value.direction !== "down" && value.direction !== "forward") {
+  if (!isArrowDirection(value.direction)) {
     errors.push(`${path}.direction must be one of left, right, up, down, forward`);
   }
   if (!isString(value.targetCardId)) {
@@ -196,7 +226,7 @@ function parseArrow(value: unknown, path: string, errors: string[]): ArrowLink |
   const transition = parseTransition(value.transition, `${path}.transition`, errors);
   if (
     !isString(value.id)
-    || (value.direction !== "left" && value.direction !== "right" && value.direction !== "up" && value.direction !== "down" && value.direction !== "forward")
+    || !isArrowDirection(value.direction)
     || !isString(value.targetCardId)
     || position === null
     || transition === null

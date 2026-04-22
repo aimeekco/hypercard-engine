@@ -163,6 +163,19 @@ function getReferencedAssetPaths(
   return Array.from(new Set(paths));
 }
 
+function getEnabledArrowAction(card: Card, direction: ArrowLink["direction"]): Action | null {
+  const arrow = card.arrows?.find((candidate) => candidate.direction === direction && !candidate.disabled);
+  if (!arrow) {
+    return null;
+  }
+
+  return {
+    type: "goToCard",
+    cardId: arrow.targetCardId,
+    transition: arrow.transition
+  };
+}
+
 function rectFromBounds(bounds: ScreenBounds, stageRect: DOMRect): DOMRect {
   return new DOMRect(
     stageRect.width * (bounds.x / 100),
@@ -217,17 +230,6 @@ function getContainedFrameRect(containerRect: DOMRect, mediaWidth: number, media
   const height = containerRect.height;
   const width = height * mediaAspect;
   return new DOMRect((containerRect.width - width) / 2, 0, width, height);
-}
-
-function getWindowTitle(card: Card): string {
-  if (card.title?.heading) {
-    return card.title.heading;
-  }
-  return card.id
-    .split(/[_-]+/)
-    .filter((part) => part.length > 0)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -348,7 +350,15 @@ export class HypercardEngine {
     }
   }
 
-  private async createLayerElement(layer: MediaLayer, className: string, alt: string): Promise<HTMLElement> {
+  private async createLayerElement(
+    layer: MediaLayer,
+    className: string,
+    alt: string,
+    options?: {
+      card?: Card;
+      renderToken?: number;
+    }
+  ): Promise<HTMLElement> {
     const assetUrl = await this.getAssetUrl(layer.src);
 
     if (layer.kind === "image") {
@@ -368,13 +378,35 @@ export class HypercardEngine {
     video.className = className;
     video.src = assetUrl;
     video.autoplay = true;
-    video.loop = true;
+    video.loop = layer.loop ?? (layer.onEndedDirection === undefined);
     video.muted = true;
     video.defaultMuted = true;
     video.playsInline = true;
     video.setAttribute("aria-label", alt);
     if (layer.position) {
       video.style.objectPosition = `${layer.position.x}% ${layer.position.y}%`;
+    }
+    if (layer.onEndedDirection && options?.card) {
+      const action = getEnabledArrowAction(options.card, layer.onEndedDirection);
+      if (action) {
+        video.addEventListener("ended", () => {
+          if (
+            options.renderToken !== this.renderToken
+            || this.currentCardId !== options.card?.id
+            || this.isTransitioning
+          ) {
+            return;
+          }
+
+          void this.applyAction(action).catch((error) => {
+            console.warn("Video-ended navigation failed", error);
+          });
+        });
+      } else {
+        console.warn(
+          `Video layer '${layer.src}' requested onEndedDirection '${layer.onEndedDirection}' on card '${options.card.id}', but no enabled arrow matched`
+        );
+      }
     }
     await waitForVideoLoad(video);
     void video.play().catch((error) => {
@@ -576,7 +608,6 @@ export class HypercardEngine {
 
     const title = document.createElement("div");
     title.className = "card-window-title";
-    title.textContent = getWindowTitle(card);
 
     titlebar.append(leftCap, title, rightCap);
 
@@ -697,11 +728,21 @@ export class HypercardEngine {
     return selectedLayer;
   }
 
-  private async buildCardScene(card: Card, backgroundLayer: MediaLayer): Promise<HTMLElement> {
+  private async buildCardScene(card: Card, backgroundLayer: MediaLayer, renderToken: number): Promise<HTMLElement> {
     const [backgroundElement, overlayElement] = await Promise.all([
-      this.createLayerElement(backgroundLayer, "card-media card-media-background", `${card.id} background`),
+      this.createLayerElement(
+        backgroundLayer,
+        "card-media card-media-background",
+        `${card.id} background`,
+        { card, renderToken }
+      ),
       card.overlay
-        ? this.createLayerElement(card.overlay, "card-media card-media-overlay", `${card.id} overlay`)
+        ? this.createLayerElement(
+            card.overlay,
+            "card-media card-media-overlay",
+            `${card.id} overlay`,
+            { card, renderToken }
+          )
         : Promise.resolve(null)
     ]);
 
@@ -877,7 +918,7 @@ export class HypercardEngine {
         options.preserveBackgroundSelection ?? false,
         options.advanceProgression ?? false
       );
-      const scene = await this.buildCardScene(card, backgroundLayer);
+      const scene = await this.buildCardScene(card, backgroundLayer, renderToken);
 
       if (renderToken !== this.renderToken) {
         return;

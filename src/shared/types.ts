@@ -1,9 +1,12 @@
+export type ArrowDirection = "left" | "right" | "up" | "down" | "forward";
 export type MediaKind = "image" | "video";
 
 export type MediaLayer = {
   kind: MediaKind;
   src: string;
   position?: ScreenPosition;
+  loop?: boolean;
+  onEndedDirection?: ArrowDirection;
 };
 
 export const DITHER_LEVEL_VALUES = [0, 0.25, 0.5, 0.75, 1] as const;
@@ -22,7 +25,6 @@ export type AudioSpec = {
   loop?: boolean;
 };
 
-export type ArrowDirection = "left" | "right" | "up" | "down" | "forward";
 export type CardStyleLevel = "modern" | "transitional" | "hypercard";
 export type ButtonVariant = "primary" | "secondary";
 export type TitleAlign = "left" | "center";

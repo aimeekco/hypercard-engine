@@ -304,7 +304,7 @@ body {
 }
 
 .card-arrow.is-up {
-  top: 20px;
+  top: 54px;
   left: 50%;
   --control-transform: translateX(-50%);
 }
@@ -506,6 +506,10 @@ body {
 
   .card-arrow.is-forward {
     top: 56px;
+  }
+
+  .card-arrow.is-up {
+    top: 50px;
   }
 
   .card-arrow.is-forward .card-arrow-icon {

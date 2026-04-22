@@ -120,17 +120,37 @@ describe("validateStack", () => {
           id: "animated",
           background: {
             kind: "video",
-            src: "assets/video/background.webm"
+            src: "assets/video/background.webm",
+            loop: false,
+            onEndedDirection: "up"
           },
           overlay: {
             kind: "video",
             src: "assets/video/trout-alpha.webm"
+          },
+          arrows: [
+            {
+              id: "to-next",
+              direction: "up",
+              targetCardId: "next"
+            }
+          ]
+        },
+        {
+          id: "next",
+          background: {
+            kind: "image",
+            src: "assets/images/next.png"
           }
         }
       ]
     });
 
     expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.cards[0]?.background.loop).toBe(false);
+      expect(result.value.cards[0]?.background.onEndedDirection).toBe("up");
+    }
   });
 
   it("accepts cards with a background folder override", () => {
@@ -221,6 +241,51 @@ describe("validateStack", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.errors.join("\n")).toContain("cards[0].backgroundFolder must be a non-empty string");
+    }
+  });
+
+  it("rejects image layers with video-only playback settings", () => {
+    const result = validateStack({
+      initialCardId: "pool",
+      cards: [
+        {
+          id: "pool",
+          background: {
+            kind: "image",
+            src: "assets/images/pool.png",
+            loop: false,
+            onEndedDirection: "up"
+          }
+        }
+      ]
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.join("\n")).toContain("cards[0].background.loop is only supported for video layers");
+      expect(result.errors.join("\n")).toContain("cards[0].background.onEndedDirection is only supported for video layers");
+    }
+  });
+
+  it("rejects looping video end-navigation configs", () => {
+    const result = validateStack({
+      initialCardId: "pool",
+      cards: [
+        {
+          id: "pool",
+          background: {
+            kind: "video",
+            src: "assets/video/pool.webm",
+            loop: true,
+            onEndedDirection: "up"
+          }
+        }
+      ]
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.join("\n")).toContain("cards[0].background.loop cannot be true when onEndedDirection is set");
     }
   });
 
