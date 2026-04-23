@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getMutedLayersForLevel } from "../src/shared/audio";
+import { getMutedLayersForLevel, shouldAutoplayFinAudio } from "../src/shared/audio";
 import { renderMutedMetlSource, splitMetlSegments } from "../src/main/finMusic";
 
 describe("splitMetlSegments", () => {
@@ -65,5 +65,35 @@ describe("getMutedLayersForLevel", () => {
     }, 0.5);
 
     expect(layers).toEqual(["supersquare"]);
+  });
+});
+
+describe("shouldAutoplayFinAudio", () => {
+  it("defers stack-level Fin audio until a fish card", () => {
+    expect(shouldAutoplayFinAudio({
+      backgroundFolder: undefined
+    }, {
+      fin: {
+        source: "../fin/examples/weird_fishes.metl"
+      }
+    })).toBe(false);
+
+    expect(shouldAutoplayFinAudio({
+      backgroundFolder: "assets/backgrounds"
+    }, {
+      fin: {
+        source: "../fin/examples/weird_fishes.metl"
+      }
+    })).toBe(true);
+  });
+
+  it("still autoplays explicit card-level Fin audio", () => {
+    expect(shouldAutoplayFinAudio({
+      audio: {
+        fin: {
+          source: "../fin/examples/weird_fishes.metl"
+        }
+      }
+    })).toBe(true);
   });
 });

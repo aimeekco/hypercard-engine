@@ -94,6 +94,13 @@ function setupIpcHandlers(root: string): void {
     }
   });
 
+  ipcMain.handle(IPC_CHANNELS.musicPrewarm, async () => {
+    if (!musicController) {
+      musicController = new FinMusicController(root);
+    }
+    await musicController.prewarm();
+  });
+
   ipcMain.handle(IPC_CHANNELS.musicStartOrSync, async (_event, spec: FinAudioSpec, level: DitherLevel) => {
     if (!musicController) {
       musicController = new FinMusicController(root);

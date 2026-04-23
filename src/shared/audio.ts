@@ -1,4 +1,4 @@
-import type { AudioSpec, DitherLevel, DitherLevelMap, FinAudioSpec } from "./types";
+import type { AudioSpec, Card, DitherLevel, DitherLevelMap, FinAudioSpec } from "./types";
 import { DITHER_LEVEL_VALUES } from "./types";
 
 export const DEFAULT_FIN_LAYER_MUTE_MAP: DitherLevelMap<string[]> = {
@@ -43,4 +43,16 @@ export function hasFinAudio(audio?: AudioSpec): audio is AudioSpec & { fin: FinA
 
 export function resolveAudioSpec(stackAudio?: AudioSpec, cardAudio?: AudioSpec): AudioSpec | undefined {
   return cardAudio ?? stackAudio;
+}
+
+export function shouldAutoplayFinAudio(
+  card: Pick<Card, "audio" | "backgroundFolder">,
+  stackAudio?: AudioSpec
+): boolean {
+  const resolved = resolveAudioSpec(stackAudio, card.audio);
+  if (!hasFinAudio(resolved)) {
+    return false;
+  }
+
+  return Boolean(card.audio?.fin) || Boolean(card.backgroundFolder);
 }

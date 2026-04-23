@@ -110,6 +110,10 @@ export class FinMusicController {
     this.finBin = finBin;
   }
 
+  async prewarm(): Promise<void> {
+    await this.ensureSuperdirtStarted();
+  }
+
   async startOrSync(spec: FinAudioSpec, level: DitherLevel): Promise<void> {
     const sourcePath = resolveSourcePath(this.root, spec.source);
     const runtimePath = buildRuntimePath(this.root, sourcePath);

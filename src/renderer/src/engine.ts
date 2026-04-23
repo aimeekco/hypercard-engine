@@ -4,7 +4,7 @@ import {
   getDitherFolderCandidates,
   getDitherLevelForStep
 } from "@shared/backgroundBank";
-import { hasFinAudio, resolveAudioSpec } from "@shared/audio";
+import { hasFinAudio, resolveAudioSpec, shouldAutoplayFinAudio } from "@shared/audio";
 import { getArrowNavigationTarget } from "@shared/navigation";
 import { isStochasticCard, resolveStochasticNavigationTarget } from "@shared/stochasticNavigation";
 import type {
@@ -342,6 +342,11 @@ export class HypercardEngine {
       const stack = await this.readStackValidated();
       this.stack = stack;
       this.cardsById = new Map(stack.cards.map((card) => [card.id, card]));
+      if (hasFinAudio(stack.audio)) {
+        await window.hypercard.musicPrewarm().catch((error) => {
+          console.warn("Audio prewarm failed", error);
+        });
+      }
       this.setStatus("");
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -843,10 +848,15 @@ export class HypercardEngine {
   }
 
   private async playCardAudio(card: Card, level: DitherLevel): Promise<void> {
-    const audio = resolveAudioSpec(this.stack?.audio, card.audio);
+    const stackAudio = this.stack?.audio;
+    const audio = resolveAudioSpec(stackAudio, card.audio);
     if (hasFinAudio(audio)) {
       await this.audio.stop();
-      await window.hypercard.musicStartOrSync(audio.fin, level);
+      if (shouldAutoplayFinAudio(card, stackAudio)) {
+        await window.hypercard.musicStartOrSync(audio.fin, level);
+      } else {
+        await window.hypercard.musicStop();
+      }
       return;
     }
 
