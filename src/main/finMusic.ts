@@ -160,6 +160,29 @@ export class FinMusicController {
     }
   }
 
+  async shutdown(): Promise<void> {
+    await this.stop();
+
+    if (!this.superdirtReady) {
+      return;
+    }
+
+    const result = await this.runFinCommand(["superdirt", "kill"]);
+    if (result.exitCode === 0) {
+      this.superdirtReady = false;
+      if (result.combinedOutput) {
+        console.log(`[fin] ${result.combinedOutput}`);
+      }
+      return;
+    }
+
+    throw new Error(
+      result.combinedOutput
+        ? `failed to stop SuperDirt: ${result.combinedOutput}`
+        : `failed to stop SuperDirt via '${this.finBin} superdirt kill'`
+    );
+  }
+
   private createSourceWatcher(sourcePath: string): FSWatcher {
     const watcher = chokidar.watch(sourcePath, {
       ignoreInitial: true,

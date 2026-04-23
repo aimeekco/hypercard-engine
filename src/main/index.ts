@@ -10,6 +10,8 @@ import { FinMusicController } from "./finMusic";
 let mainWindow: BrowserWindow | null = null;
 const watchers: FSWatcher[] = [];
 let musicController: FinMusicController | null = null;
+let shutdownPromise: Promise<void> | null = null;
+let quitting = false;
 
 function getProjectRoot(): string {
   if (process.env.HYPERCARD_ROOT) {
@@ -143,6 +145,28 @@ function setupWatchers(root: string): void {
   }
 }
 
+async function cleanupResources(): Promise<void> {
+  await musicController?.shutdown();
+  await Promise.all(watchers.map((watcher) => watcher.close()));
+}
+
+function runShutdownCleanup(): Promise<void> {
+  if (!shutdownPromise) {
+    shutdownPromise = cleanupResources().catch((error) => {
+      console.error("shutdown cleanup failed:", error);
+    });
+  }
+  return shutdownPromise;
+}
+
+async function handleTerminationSignal(signal: NodeJS.Signals): Promise<void> {
+  try {
+    await runShutdownCleanup();
+  } finally {
+    process.exit(signal === "SIGINT" ? 130 : 0);
+  }
+}
+
 app.whenReady().then(() => {
   const root = getProjectRoot();
   createWindow();
@@ -162,7 +186,22 @@ app.on("window-all-closed", () => {
   }
 });
 
-app.on("before-quit", async () => {
-  await musicController?.stop();
-  await Promise.all(watchers.map((watcher) => watcher.close()));
+app.on("before-quit", (event) => {
+  if (quitting) {
+    return;
+  }
+
+  event.preventDefault();
+  quitting = true;
+  void runShutdownCleanup().finally(() => {
+    app.quit();
+  });
+});
+
+process.on("SIGINT", () => {
+  void handleTerminationSignal("SIGINT");
+});
+
+process.on("SIGTERM", () => {
+  void handleTerminationSignal("SIGTERM");
 });

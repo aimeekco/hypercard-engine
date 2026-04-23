@@ -898,6 +898,62 @@ export class HypercardEngine {
     incomingScene.style.removeProperty("transform-origin");
   }
 
+  private async animateDefaultTransition(outgoingScene: HTMLElement, incomingScene: HTMLElement): Promise<void> {
+    const duration = 320;
+
+    incomingScene.style.opacity = "0";
+    incomingScene.style.pointerEvents = "none";
+
+    const exitAnimation = outgoingScene.animate(
+      [
+        {
+          opacity: 1,
+          filter: "blur(0px) brightness(1)",
+          transform: "scale(1)"
+        },
+        {
+          opacity: 0,
+          filter: "blur(6px) brightness(0.92)",
+          transform: "scale(0.985)"
+        }
+      ],
+      {
+        duration,
+        easing: "ease-out",
+        fill: "forwards"
+      }
+    );
+
+    const enterAnimation = incomingScene.animate(
+      [
+        {
+          opacity: 0,
+          filter: "blur(6px) brightness(0.94)",
+          transform: "scale(1.015)"
+        },
+        {
+          opacity: 1,
+          filter: "blur(0px) brightness(1)",
+          transform: "scale(1)"
+        }
+      ],
+      {
+        duration,
+        easing: "ease-out",
+        fill: "forwards"
+      }
+    );
+
+    await Promise.all([
+      exitAnimation.finished.catch(() => undefined),
+      enterAnimation.finished.catch(() => undefined)
+    ]);
+
+    outgoingScene.remove();
+    incomingScene.style.removeProperty("opacity");
+    incomingScene.style.removeProperty("pointer-events");
+  }
+
   private async enterCard(
     cardId: string,
     transition?: CardTransitionSpec,
@@ -925,14 +981,18 @@ export class HypercardEngine {
       }
 
       const previousScene = this.stage.querySelector<HTMLElement>(".card-scene");
-      const shouldAnimate = Boolean(transition && previousScene && this.currentCardId && this.currentCardId !== card.id);
+      const shouldAnimate = Boolean(previousScene && this.currentCardId && this.currentCardId !== card.id);
 
-      if (shouldAnimate && previousScene && transition) {
+      if (shouldAnimate && previousScene) {
         this.isTransitioning = true;
         try {
           this.applyStyleLevel(card.styleLevel);
           this.stage.append(scene);
-          await this.animateTransition(previousScene, scene, transition);
+          if (transition) {
+            await this.animateTransition(previousScene, scene, transition);
+          } else {
+            await this.animateDefaultTransition(previousScene, scene);
+          }
           this.stage.replaceChildren(scene);
         } finally {
           this.isTransitioning = false;
@@ -950,7 +1010,6 @@ export class HypercardEngine {
       if (card.buttons && card.buttons.length > 0) {
         scene.querySelector<HTMLButtonElement>(".card-button:not(:disabled)")?.focus();
       }
-
       const currentLevel = this.currentBackgroundSelection?.level ?? this.getDitherLevelForRender(
         card.id,
         options.advanceProgression ?? false
