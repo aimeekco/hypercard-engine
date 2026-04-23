@@ -55,18 +55,15 @@ const cards: Card[] = [
   },
   {
     id: "ending_surface",
-    background: { kind: "video", src: "ending-surface.mov" },
-    buttons: [{ id: "restart-surface", label: "Restart", targetCardId: "boot_mac" }]
+    background: { kind: "video", src: "ending-surface.mov" }
   },
   {
     id: "ending_current",
-    background: { kind: "video", src: "ending-current.mov" },
-    buttons: [{ id: "restart-current", label: "Restart", targetCardId: "boot_mac" }]
+    background: { kind: "video", src: "ending-current.mov" }
   },
   {
     id: "ending_depths",
-    background: { kind: "video", src: "ending-depths.mov" },
-    buttons: [{ id: "restart-depths", label: "Restart", targetCardId: "boot_mac" }]
+    background: { kind: "video", src: "ending-depths.mov" }
   }
 ];
 

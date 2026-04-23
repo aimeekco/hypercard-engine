@@ -395,15 +395,7 @@
           "x": 50,
           "y": 58
         }
-      },
-      "buttons": [
-        {
-          "id": "restart-surface",
-          "label": "Restart",
-          "targetCardId": "boot_mac",
-          "variant": "secondary"
-        }
-      ]
+      }
     },
     {
       "id": "ending_canopy",
@@ -420,15 +412,7 @@
           "x": 45,
           "y": 32
         }
-      },
-      "buttons": [
-        {
-          "id": "restart-canopy",
-          "label": "Restart",
-          "targetCardId": "boot_mac",
-          "variant": "secondary"
-        }
-      ]
+      }
     },
     {
       "id": "ending_current",
@@ -445,15 +429,7 @@
           "x": 50,
           "y": 58
         }
-      },
-      "buttons": [
-        {
-          "id": "restart-current",
-          "label": "Restart",
-          "targetCardId": "boot_mac",
-          "variant": "secondary"
-        }
-      ]
+      }
     },
     {
       "id": "ending_silt",
@@ -470,15 +446,7 @@
           "x": 48,
           "y": 68
         }
-      },
-      "buttons": [
-        {
-          "id": "restart-silt",
-          "label": "Restart",
-          "targetCardId": "boot_mac",
-          "variant": "secondary"
-        }
-      ]
+      }
     },
     {
       "id": "ending_depths",
@@ -495,15 +463,7 @@
           "x": 50,
           "y": 58
         }
-      },
-      "buttons": [
-        {
-          "id": "restart-depths",
-          "label": "Restart",
-          "targetCardId": "boot_mac",
-          "variant": "secondary"
-        }
-      ]
+      }
     },
     {
       "id": "ending_abyss",
@@ -520,15 +480,7 @@
           "x": 52,
           "y": 72
         }
-      },
-      "buttons": [
-        {
-          "id": "restart-abyss",
-          "label": "Restart",
-          "targetCardId": "boot_mac",
-          "variant": "secondary"
-        }
-      ]
+      }
     }
   ]
 }

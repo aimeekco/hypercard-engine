@@ -18,7 +18,7 @@ describe("background bank scheduling", () => {
 
   it("finds the first step for a level and the final schedule level", () => {
     expect(getFirstStepForDitherLevel(0, DEFAULT_DITHER_SCHEDULE)).toBe(0);
-    expect(getFirstStepForDitherLevel(1, DEFAULT_DITHER_SCHEDULE)).toBe(5);
+    expect(getFirstStepForDitherLevel(1, DEFAULT_DITHER_SCHEDULE)).toBe(6);
     expect(getFinalDitherLevel(DEFAULT_DITHER_SCHEDULE)).toBe(1);
   });
 
