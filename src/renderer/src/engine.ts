@@ -39,6 +39,8 @@ const DEFAULT_CARD_BUTTON_POSITION = {
   y: 72
 };
 
+const INTRO_CLICK_SOUND_PATH = "assets/audio/mouse_click.mp3";
+
 type EnterCardOptions = {
   advanceProgression?: boolean;
   preserveBackgroundSelection?: boolean;
@@ -179,6 +181,10 @@ function getEnabledArrowAction(card: Card, direction: ArrowLink["direction"]): A
 
 function participatesInDitherProgression(card: Card | null | undefined): boolean {
   return Boolean(card?.backgroundFolder);
+}
+
+function shouldPlayIntroClickSound(card: Pick<Card, "id">): boolean {
+  return card.id === "boot_mac" || card.id === "intro_title";
 }
 
 function rectFromBounds(bounds: ScreenBounds, stageRect: DOMRect): DOMRect {
@@ -489,7 +495,16 @@ export class HypercardEngine {
     return button;
   }
 
-  private createClickTarget(clickTarget: ClickTarget): HTMLButtonElement {
+  private playIntroClickSound(card: Pick<Card, "id">): void {
+    if (!shouldPlayIntroClickSound(card)) {
+      return;
+    }
+    void this.audio.playOneShot(INTRO_CLICK_SOUND_PATH).catch((error) => {
+      console.warn("Click sound failed", error);
+    });
+  }
+
+  private createClickTarget(card: Card, clickTarget: ClickTarget): HTMLButtonElement {
     const target = document.createElement("button");
     target.type = "button";
     target.className = "card-click-target";
@@ -503,6 +518,7 @@ export class HypercardEngine {
       target.disabled = true;
     } else {
       target.addEventListener("click", () => {
+        this.playIntroClickSound(card);
         void this.applyAction({ type: "goToCard", cardId: clickTarget.targetCardId, transition: clickTarget.transition });
       });
     }
@@ -510,7 +526,7 @@ export class HypercardEngine {
     return target;
   }
 
-  private async createDragTarget(dragTarget: DragTarget, frameElement: HTMLElement): Promise<HTMLButtonElement> {
+  private async createDragTarget(card: Card, dragTarget: DragTarget, frameElement: HTMLElement): Promise<HTMLButtonElement> {
     const target = document.createElement("button");
     target.type = "button";
     target.className = "card-drag-target";
@@ -576,6 +592,7 @@ export class HypercardEngine {
           target.disabled = true;
           target.classList.add("is-settled");
           moveTarget(snapRect.x, snapRect.y);
+          this.playIntroClickSound(card);
           window.setTimeout(() => {
             void this.applyAction({ type: "goToCard", cardId: dragTarget.targetCardId, transition: dragTarget.transition });
           }, 180);
@@ -823,7 +840,7 @@ export class HypercardEngine {
     frame.style.width = `${containedFrameRect.width}px`;
     frame.style.height = `${containedFrameRect.height}px`;
 
-    const dragTargetElements = await Promise.all((card.dragTargets ?? []).map((dragTarget) => this.createDragTarget(dragTarget, frame)));
+    const dragTargetElements = await Promise.all((card.dragTargets ?? []).map((dragTarget) => this.createDragTarget(card, dragTarget, frame)));
 
     const titleBlock = this.createTitleBlock(card);
     if (titleBlock) {
@@ -833,7 +850,7 @@ export class HypercardEngine {
       frame.append(this.createCardButton(button));
     }
     for (const clickTarget of card.clickTargets ?? []) {
-      frame.append(this.createClickTarget(clickTarget));
+      frame.append(this.createClickTarget(card, clickTarget));
     }
     for (const dragTargetElement of dragTargetElements) {
       frame.append(dragTargetElement);

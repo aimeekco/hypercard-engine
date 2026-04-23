@@ -3,6 +3,10 @@ type AmbientOptions = {
   loop?: boolean;
 };
 
+type OneShotOptions = {
+  volume?: number;
+};
+
 function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   const copy = new Uint8Array(bytes.byteLength);
   copy.set(bytes);
@@ -15,6 +19,7 @@ export class AudioEngine {
   private gainNode: GainNode | null = null;
   private currentSource: AudioBufferSourceNode | null = null;
   private currentPath: string | null = null;
+  private readonly bufferCache = new Map<string, AudioBuffer>();
 
   private async ensureGraph(): Promise<void> {
     if (this.context && this.inputNode && this.gainNode) {
@@ -119,5 +124,34 @@ export class AudioEngine {
     source.start();
     this.currentSource = source;
     this.currentPath = relativePath;
+  }
+
+  async playOneShot(relativePath: string, options: OneShotOptions = {}): Promise<void> {
+    await this.ensureGraph();
+    if (!this.context) {
+      return;
+    }
+
+    let buffer = this.bufferCache.get(relativePath);
+    if (!buffer) {
+      const bytes = await window.hypercard.readBinary(relativePath);
+      const arrayBuffer = toArrayBuffer(bytes);
+      buffer = await this.context.decodeAudioData(arrayBuffer.slice(0));
+      this.bufferCache.set(relativePath, buffer);
+    }
+
+    const source = this.context.createBufferSource();
+    source.buffer = buffer;
+
+    const gain = this.context.createGain();
+    gain.gain.value = options.volume ?? 0.45;
+
+    source.connect(gain);
+    gain.connect(this.context.destination);
+    source.start();
+    source.addEventListener("ended", () => {
+      source.disconnect();
+      gain.disconnect();
+    }, { once: true });
   }
 }
