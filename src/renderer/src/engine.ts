@@ -177,6 +177,10 @@ function getEnabledArrowAction(card: Card, direction: ArrowLink["direction"]): A
   };
 }
 
+function participatesInDitherProgression(card: Card | null | undefined): boolean {
+  return Boolean(card?.backgroundFolder);
+}
+
 function rectFromBounds(bounds: ScreenBounds, stageRect: DOMRect): DOMRect {
   return new DOMRect(
     stageRect.width * (bounds.x / 100),
@@ -250,8 +254,7 @@ export class HypercardEngine {
   private readonly backgroundFolderCache = new Map<string, string[]>();
   private renderToken = 0;
   private isTransitioning = false;
-  private navigationStep = 0;
-  private stochasticChoiceCount = 0;
+  private currentDitherStep = 0;
   private currentBackgroundSelection: BackgroundSelection | null = null;
 
   constructor(stage: HTMLElement, status: HTMLElement) {
@@ -310,11 +313,10 @@ export class HypercardEngine {
     const card = this.currentCardId ? this.cardsById.get(this.currentCardId) : null;
     const cards = this.stack?.cards ?? [];
     const stochasticTarget = card && isStochasticCard(card, cards)
-      ? resolveStochasticNavigationTarget(card, cards, this.stochasticChoiceCount)
+      ? resolveStochasticNavigationTarget(card, cards, this.currentDitherStep)
       : null;
 
     if (stochasticTarget) {
-      this.stochasticChoiceCount += stochasticTarget.countsTowardRun ? 1 : 0;
       await this.applyAction({
         type: "goToCard",
         cardId: stochasticTarget.cardId,
@@ -675,12 +677,30 @@ export class HypercardEngine {
     }
   }
 
-  private getDitherLevelForRender(cardId: string, advanceProgression: boolean): DitherLevel {
-    const isCardToCardNavigation = advanceProgression && this.currentCardId !== null && this.currentCardId !== cardId;
-    const scheduleStep = isCardToCardNavigation
-      ? this.navigationStep
-      : Math.max(0, this.navigationStep - (this.currentCardId ? 1 : 0));
-    return getDitherLevelForStep(scheduleStep);
+  private getDitherStepForRender(card: Card, advanceProgression: boolean): number {
+    if (!participatesInDitherProgression(card)) {
+      return 0;
+    }
+
+    const currentCard = this.currentCardId ? this.cardsById.get(this.currentCardId) ?? null : null;
+    const sameCard = currentCard?.id === card.id;
+    if (!advanceProgression || sameCard) {
+      return this.currentDitherStep;
+    }
+
+    if (participatesInDitherProgression(currentCard) && participatesInDitherProgression(card)) {
+      return this.currentDitherStep + 1;
+    }
+
+    if (!participatesInDitherProgression(currentCard) && participatesInDitherProgression(card)) {
+      return 0;
+    }
+
+    return this.currentDitherStep;
+  }
+
+  private getDitherLevelForRender(card: Card, advanceProgression: boolean): DitherLevel {
+    return getDitherLevelForStep(this.getDitherStepForRender(card, advanceProgression));
   }
 
   private async resolveBackgroundLayer(
@@ -688,7 +708,7 @@ export class HypercardEngine {
     preserveCurrentSelection: boolean,
     advanceProgression: boolean
   ): Promise<MediaLayer> {
-    const currentLevel = this.getDitherLevelForRender(card.id, advanceProgression);
+    const currentLevel = this.getDitherLevelForRender(card, advanceProgression);
     let availableLayers: MediaLayer[] = [];
 
     if (card.backgroundFolder) {
@@ -1025,10 +1045,10 @@ export class HypercardEngine {
       }
 
       if (options.advanceProgression && previousCardId && previousCardId !== card.id) {
-        this.navigationStep += 1;
+        this.currentDitherStep = this.getDitherStepForRender(card, true);
       }
-      if (card.id === "boot_mac") {
-        this.stochasticChoiceCount = 0;
+      if (!participatesInDitherProgression(card)) {
+        this.currentDitherStep = 0;
       }
       this.currentCardId = card.id;
       this.setStatus("");
@@ -1036,7 +1056,7 @@ export class HypercardEngine {
         scene.querySelector<HTMLButtonElement>(".card-button:not(:disabled)")?.focus();
       }
       const currentLevel = this.currentBackgroundSelection?.level ?? this.getDitherLevelForRender(
-        card.id,
+        card,
         options.advanceProgression ?? false
       );
       await this.playCardAudio(card, currentLevel).catch((error) => {

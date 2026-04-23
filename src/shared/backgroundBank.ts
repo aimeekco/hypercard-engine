@@ -1,7 +1,7 @@
 import type { DitherLevel } from "./types";
 import { DITHER_LEVEL_VALUES } from "./types";
 
-export const DEFAULT_DITHER_SCHEDULE: readonly DitherLevel[] = [0, 0, 0.25, 0.5, 0.75, 1, 1];
+export const DEFAULT_DITHER_SCHEDULE: readonly DitherLevel[] = [0, 0, 0.25, 0.5, 0.75, 0.75, 1];
 
 export function getDitherLevelForStep(
   step: number,
@@ -10,6 +10,18 @@ export function getDitherLevelForStep(
   const normalizedStep = Math.max(0, Math.floor(step));
   const index = Math.min(normalizedStep, schedule.length - 1);
   return schedule[index] ?? DEFAULT_DITHER_SCHEDULE[DEFAULT_DITHER_SCHEDULE.length - 1];
+}
+
+export function getFinalDitherLevel(schedule: readonly DitherLevel[] = DEFAULT_DITHER_SCHEDULE): DitherLevel {
+  return schedule[schedule.length - 1] ?? DEFAULT_DITHER_SCHEDULE[DEFAULT_DITHER_SCHEDULE.length - 1];
+}
+
+export function getFirstStepForDitherLevel(
+  level: DitherLevel,
+  schedule: readonly DitherLevel[] = DEFAULT_DITHER_SCHEDULE
+): number {
+  const firstIndex = schedule.indexOf(level);
+  return firstIndex >= 0 ? firstIndex : 0;
 }
 
 export function getDitherFolderCandidates(backgroundFolder: string, level: DitherLevel): string[] {

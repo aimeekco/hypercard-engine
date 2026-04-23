@@ -1,10 +1,13 @@
-import { DEFAULT_DITHER_SCHEDULE } from "./backgroundBank";
+import {
+  DEFAULT_DITHER_SCHEDULE,
+  getDitherLevelForStep,
+  getFinalDitherLevel
+} from "./backgroundBank";
 import type { ArrowLink, Card, CardTransitionSpec } from "./types";
 
 type StochasticNavigationResult = {
   cardId: string;
   transition?: CardTransitionSpec;
-  countsTowardRun: boolean;
 };
 
 function isEndingCard(card: Pick<Card, "buttons">): boolean {
@@ -26,7 +29,7 @@ function getEndingArrow(card: Card, endingCardIds: ReadonlySet<string>): ArrowLi
 export function resolveStochasticNavigationTarget(
   card: Card,
   cards: readonly Card[],
-  choiceCount: number,
+  currentScheduleStep: number,
   randomValue = Math.random()
 ): StochasticNavigationResult | null {
   const explorationCards = getExplorationCards(cards);
@@ -40,12 +43,11 @@ export function resolveStochasticNavigationTarget(
     return null;
   }
 
-  const remainingChoicesBeforeEnding = DEFAULT_DITHER_SCHEDULE.length - 2;
-  if (choiceCount >= remainingChoicesBeforeEnding) {
+  const nextLevel = getDitherLevelForStep(currentScheduleStep + 1, DEFAULT_DITHER_SCHEDULE);
+  if (nextLevel === getFinalDitherLevel(DEFAULT_DITHER_SCHEDULE)) {
     return {
       cardId: endingArrow.targetCardId,
-      transition: endingArrow.transition,
-      countsTowardRun: true
+      transition: endingArrow.transition
     };
   }
 
@@ -53,8 +55,7 @@ export function resolveStochasticNavigationTarget(
   if (nextExplorationCards.length === 0) {
     return {
       cardId: endingArrow.targetCardId,
-      transition: endingArrow.transition,
-      countsTowardRun: true
+      transition: endingArrow.transition
     };
   }
 
@@ -65,8 +66,7 @@ export function resolveStochasticNavigationTarget(
   }
 
   return {
-    cardId: nextCard.id,
-    countsTowardRun: true
+    cardId: nextCard.id
   };
 }
 

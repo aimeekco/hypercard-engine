@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   chooseRandomEntry,
   DEFAULT_DITHER_SCHEDULE,
+  getFinalDitherLevel,
+  getFirstStepForDitherLevel,
   getDitherFolderCandidates,
   getDitherLevelForStep
 } from "../src/shared/backgroundBank";
@@ -12,6 +14,12 @@ describe("background bank scheduling", () => {
     expect(getDitherLevelForStep(1, DEFAULT_DITHER_SCHEDULE)).toBe(0);
     expect(getDitherLevelForStep(2, DEFAULT_DITHER_SCHEDULE)).toBe(0.25);
     expect(getDitherLevelForStep(99, DEFAULT_DITHER_SCHEDULE)).toBe(1);
+  });
+
+  it("finds the first step for a level and the final schedule level", () => {
+    expect(getFirstStepForDitherLevel(0, DEFAULT_DITHER_SCHEDULE)).toBe(0);
+    expect(getFirstStepForDitherLevel(1, DEFAULT_DITHER_SCHEDULE)).toBe(5);
+    expect(getFinalDitherLevel(DEFAULT_DITHER_SCHEDULE)).toBe(1);
   });
 
   it("returns folder candidates from active level down to zero", () => {

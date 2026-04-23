@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_DITHER_SCHEDULE } from "../src/shared/backgroundBank";
+import { DEFAULT_DITHER_SCHEDULE, getFirstStepForDitherLevel } from "../src/shared/backgroundBank";
 import { isStochasticCard, resolveStochasticNavigationTarget } from "../src/shared/stochasticNavigation";
 import type { Card } from "../src/shared/types";
 
@@ -84,11 +84,11 @@ describe("stochastic navigation", () => {
     expect(result?.transition).toBeUndefined();
   });
 
-  it("routes to the ending on the final scheduled choice", () => {
+  it("routes to the ending on the first final-level step", () => {
     const result = resolveStochasticNavigationTarget(
       cards[0]!,
       cards,
-      DEFAULT_DITHER_SCHEDULE.length - 2,
+      getFirstStepForDitherLevel(DEFAULT_DITHER_SCHEDULE[DEFAULT_DITHER_SCHEDULE.length - 1]!) - 1,
       0.5
     );
 
