@@ -6,6 +6,7 @@ import {
 } from "@shared/backgroundBank";
 import { hasFinAudio, resolveAudioSpec } from "@shared/audio";
 import { getArrowNavigationTarget } from "@shared/navigation";
+import { isStochasticCard, resolveStochasticNavigationTarget } from "@shared/stochasticNavigation";
 import type {
   Action,
   ArrowLink,
@@ -250,6 +251,7 @@ export class HypercardEngine {
   private renderToken = 0;
   private isTransitioning = false;
   private navigationStep = 0;
+  private stochasticChoiceCount = 0;
   private currentBackgroundSelection: BackgroundSelection | null = null;
 
   constructor(stage: HTMLElement, status: HTMLElement) {
@@ -297,11 +299,31 @@ export class HypercardEngine {
     }
 
     event.preventDefault();
-    void this.applyAction({ type: "goToCard", cardId: arrow.targetCardId, transition: arrow.transition });
+    void this.applyArrowNavigation(arrow);
   };
 
   private setStatus(message: string): void {
     this.status.textContent = message;
+  }
+
+  private async applyArrowNavigation(arrow: ArrowLink): Promise<void> {
+    const card = this.currentCardId ? this.cardsById.get(this.currentCardId) : null;
+    const cards = this.stack?.cards ?? [];
+    const stochasticTarget = card && isStochasticCard(card, cards)
+      ? resolveStochasticNavigationTarget(card, cards, this.stochasticChoiceCount)
+      : null;
+
+    if (stochasticTarget) {
+      this.stochasticChoiceCount += stochasticTarget.countsTowardRun ? 1 : 0;
+      await this.applyAction({
+        type: "goToCard",
+        cardId: stochasticTarget.cardId,
+        transition: stochasticTarget.transition
+      });
+      return;
+    }
+
+    await this.applyAction({ type: "goToCard", cardId: arrow.targetCardId, transition: arrow.transition });
   }
 
   private async readStackValidated(): Promise<StackDefinition> {
@@ -433,7 +455,7 @@ export class HypercardEngine {
       button.disabled = true;
     } else {
       button.addEventListener("click", () => {
-        void this.applyAction({ type: "goToCard", cardId: arrow.targetCardId, transition: arrow.transition });
+        void this.applyArrowNavigation(arrow);
       });
     }
     return button;
@@ -1004,6 +1026,9 @@ export class HypercardEngine {
 
       if (options.advanceProgression && previousCardId && previousCardId !== card.id) {
         this.navigationStep += 1;
+      }
+      if (card.id === "boot_mac") {
+        this.stochasticChoiceCount = 0;
       }
       this.currentCardId = card.id;
       this.setStatus("");

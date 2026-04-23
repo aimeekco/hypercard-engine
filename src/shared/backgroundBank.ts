@@ -1,7 +1,7 @@
 import type { DitherLevel } from "./types";
 import { DITHER_LEVEL_VALUES } from "./types";
 
-export const DEFAULT_DITHER_SCHEDULE: readonly DitherLevel[] = [0, 0, 0.25, 0.5, 0.75, 1];
+export const DEFAULT_DITHER_SCHEDULE: readonly DitherLevel[] = [0, 0, 0.25, 0.5, 0.75, 1, 1];
 
 export function getDitherLevelForStep(
   step: number,
