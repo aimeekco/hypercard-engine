@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_DITHER_SCHEDULE, getFirstStepForDitherLevel } from "../src/shared/backgroundBank";
-import { isStochasticCard, resolveStochasticNavigationTarget } from "../src/shared/stochasticNavigation";
+import { isEndingCard, isStochasticCard, resolveStochasticNavigationTarget } from "../src/shared/stochasticNavigation";
 import type { Card } from "../src/shared/types";
 
 const cards: Card[] = [
@@ -71,6 +71,13 @@ describe("stochastic navigation", () => {
   it("treats fish cards with ending arrows as stochastic cards", () => {
     expect(isStochasticCard(cards[0], cards)).toBe(true);
     expect(isStochasticCard(cards[3], cards)).toBe(false);
+  });
+
+  it("treats only cards without navigation controls as ending cards", () => {
+    expect(isEndingCard(cards[3]!)).toBe(true);
+    expect(isEndingCard({
+      buttons: [{ id: "again", label: "Again", targetCardId: "pool_overlook" }]
+    })).toBe(false);
   });
 
   it("keeps navigation inside the exploration pool before the final choice", () => {

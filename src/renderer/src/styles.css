@@ -475,6 +475,52 @@ body {
   letter-spacing: 0.14em;
 }
 
+.card-title.is-corrupted,
+.card-subtitle.is-corrupted {
+  text-transform: none;
+  filter: contrast(1.25);
+}
+
+.ending-restart-scene {
+  display: grid;
+  place-items: center;
+  background: #000;
+}
+
+.ending-restart-button {
+  width: clamp(120px, 20%, 220px);
+  aspect-ratio: 1 / 1;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  filter: drop-shadow(0 0 18px rgba(255, 255, 255, 0.18));
+  transition:
+    filter 160ms ease,
+    transform 160ms ease;
+}
+
+.ending-restart-button:hover,
+.ending-restart-button:focus-visible {
+  transform: scale(1.04);
+  filter: drop-shadow(0 0 28px rgba(255, 255, 255, 0.32));
+  outline: none;
+}
+
+.ending-restart-button:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.ending-restart-disk {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
 #status {
   position: fixed;
   left: 16px;

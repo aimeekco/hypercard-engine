@@ -6,7 +6,7 @@ import {
 } from "@shared/backgroundBank";
 import { getAmbientVolumeForLevel, hasFinAudio, resolveAudioSpec, shouldAutoplayFinAudio } from "@shared/audio";
 import { getArrowNavigationTarget } from "@shared/navigation";
-import { isStochasticCard, resolveStochasticNavigationTarget } from "@shared/stochasticNavigation";
+import { isEndingCard, isStochasticCard, resolveStochasticNavigationTarget } from "@shared/stochasticNavigation";
 import type {
   Action,
   ArrowLink,
@@ -40,6 +40,9 @@ const DEFAULT_CARD_BUTTON_POSITION = {
 };
 
 const INTRO_CLICK_SOUND_PATH = "assets/audio/mouse_click.mp3";
+const ENDING_RESTART_DELAY_MS = 5000;
+const RESTART_CARD_ID = "intro_title";
+const RESTART_DISK_IMAGE_PATH = "assets/images/floppy_disk.png";
 const VIDEO_FRAME_SIZE = {
   width: 1920,
   height: 1080
@@ -48,6 +51,7 @@ const VIDEO_FRAME_SIZE = {
 type EnterCardOptions = {
   advanceProgression?: boolean;
   preserveBackgroundSelection?: boolean;
+  resetProgression?: boolean;
 };
 
 type BackgroundSelection = {
@@ -191,6 +195,48 @@ function shouldPlayIntroClickSound(card: Pick<Card, "id">): boolean {
   return card.id === "boot_mac" || card.id === "intro_title";
 }
 
+function corruptTitleText(text: string, restartCount: number): string {
+  if (restartCount <= 0) {
+    return text;
+  }
+
+  const replacements: Record<string, readonly string[]> = {
+    a: ["@", "4", "^"],
+    c: ["<", "(", "["],
+    f: ["F", "ph", "#"],
+    h: ["#", "|-|", "H"],
+    i: ["1", "!", "|"],
+    k: ["K", "|<", "<"],
+    s: ["$", "5", "z"],
+    t: ["7", "+", "_"]
+  };
+  const fallbackReplacements = ["_", "/", "\\", "?", "%", "*"];
+  const characters = Array.from(text);
+  const candidateIndexes = characters
+    .map((character, index) => (character.trim().length > 0 ? index : -1))
+    .filter((index) => index >= 0);
+  const replacementCount = Math.min(candidateIndexes.length, Math.max(1, restartCount * 2));
+  const usedIndexes = new Set<number>();
+
+  while (usedIndexes.size < replacementCount) {
+    const characterIndex = candidateIndexes[Math.floor(Math.random() * candidateIndexes.length)];
+    if (characterIndex === undefined || usedIndexes.has(characterIndex)) {
+      continue;
+    }
+    usedIndexes.add(characterIndex);
+    const character = characters[characterIndex] ?? "";
+    const variants = replacements[character.toLowerCase()];
+    characters[characterIndex] = variants
+      ? variants[Math.floor(Math.random() * variants.length)] ?? character
+      : fallbackReplacements[Math.floor(Math.random() * fallbackReplacements.length)] ?? character;
+  }
+
+  const suffix = restartCount > 3 && Math.random() > 0.35
+    ? ` ${fallbackReplacements[Math.floor(Math.random() * fallbackReplacements.length)]?.repeat(Math.min(4, restartCount - 2)) ?? ""}`
+    : "";
+  return `${characters.join("")}${suffix}`;
+}
+
 function rectFromBounds(bounds: ScreenBounds, stageRect: DOMRect): DOMRect {
   return new DOMRect(
     stageRect.width * (bounds.x / 100),
@@ -280,6 +326,8 @@ export class HypercardEngine {
   private currentBackgroundSelection: BackgroundSelection | null = null;
   private videoFrameSize = VIDEO_FRAME_SIZE;
   private finHoldTimer: number | null = null;
+  private endingRestartTimer: number | null = null;
+  private restartCount = 0;
   private readonly videoFreezeTimers = new Set<number>();
 
   constructor(stage: HTMLElement, status: HTMLElement) {
@@ -350,9 +398,19 @@ export class HypercardEngine {
     this.videoFreezeTimers.clear();
   }
 
+  private clearEndingRestartTimer(): void {
+    if (this.endingRestartTimer === null) {
+      return;
+    }
+
+    window.clearTimeout(this.endingRestartTimer);
+    this.endingRestartTimer = null;
+  }
+
   private clearSceneTimers(): void {
     this.clearFinHoldTimer();
     this.clearVideoFreezeTimers();
+    this.clearEndingRestartTimer();
   }
 
   private async applyArrowNavigation(arrow: ArrowLink): Promise<void> {
@@ -699,13 +757,23 @@ export class HypercardEngine {
 
     const heading = document.createElement("h2");
     heading.className = "card-title";
-    heading.textContent = card.title.heading;
+    if (card.id === RESTART_CARD_ID && this.restartCount > 0) {
+      heading.classList.add("is-corrupted");
+      heading.textContent = corruptTitleText(card.title.heading, this.restartCount);
+    } else {
+      heading.textContent = card.title.heading;
+    }
     copy.append(heading);
 
     if (card.title.subheading) {
       const subheading = document.createElement("p");
       subheading.className = "card-subtitle";
-      subheading.textContent = card.title.subheading;
+      if (card.id === RESTART_CARD_ID && this.restartCount > 0) {
+        subheading.classList.add("is-corrupted");
+        subheading.textContent = corruptTitleText(card.title.subheading, this.restartCount);
+      } else {
+        subheading.textContent = card.title.subheading;
+      }
       copy.append(subheading);
     }
 
@@ -889,6 +957,7 @@ export class HypercardEngine {
         : Promise.resolve(null)
     ]);
     this.scheduleOverlayFreeze(backgroundElement, overlayElement, card.overlay, renderToken);
+    this.scheduleEndingRestart(backgroundElement, card, renderToken);
 
     const scene = document.createElement("div");
     scene.className = "card-scene";
@@ -1025,6 +1094,88 @@ export class HypercardEngine {
       overlayElement.pause();
     }, triggerMs);
     this.videoFreezeTimers.add(timer);
+  }
+
+  private scheduleEndingRestart(backgroundElement: HTMLElement, card: Card, renderToken: number): void {
+    if (
+      !isEndingCard(card)
+      || !(backgroundElement instanceof HTMLVideoElement)
+      || backgroundElement.loop
+    ) {
+      return;
+    }
+
+    const scheduleRestartOverlay = (): void => {
+      if (renderToken !== this.renderToken) {
+        return;
+      }
+
+      this.clearEndingRestartTimer();
+      this.endingRestartTimer = window.setTimeout(() => {
+        this.endingRestartTimer = null;
+        if (
+          renderToken !== this.renderToken
+          || this.currentCardId !== card.id
+          || this.isTransitioning
+        ) {
+          return;
+        }
+
+        void this.showEndingRestartOverlay(renderToken).catch((error) => {
+          console.warn("Ending restart overlay failed", error);
+        });
+      }, ENDING_RESTART_DELAY_MS);
+    };
+
+    if (backgroundElement.ended) {
+      scheduleRestartOverlay();
+      return;
+    }
+
+    backgroundElement.addEventListener("ended", scheduleRestartOverlay, { once: true });
+  }
+
+  private async showEndingRestartOverlay(renderToken: number): Promise<void> {
+    const assetUrl = await this.getAssetUrl(RESTART_DISK_IMAGE_PATH);
+    if (renderToken !== this.renderToken) {
+      return;
+    }
+
+    const scene = document.createElement("div");
+    scene.className = "card-scene ending-restart-scene";
+    scene.dataset.frameWidth = String(this.videoFrameSize.width);
+    scene.dataset.frameHeight = String(this.videoFrameSize.height);
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "ending-restart-button";
+    button.setAttribute("aria-label", "Restart fish stack");
+
+    const image = document.createElement("img");
+    image.className = "ending-restart-disk";
+    image.alt = "";
+    image.draggable = false;
+    image.src = assetUrl;
+    await waitForImageLoad(image);
+    if (renderToken !== this.renderToken) {
+      return;
+    }
+
+    button.append(image);
+    button.addEventListener("click", () => {
+      button.disabled = true;
+      this.restartCount += 1;
+      this.playIntroClickSound({ id: RESTART_CARD_ID });
+      void this.enterCard(RESTART_CARD_ID, undefined, { resetProgression: true });
+    });
+
+    scene.append(button);
+    this.stage.replaceChildren(scene);
+    this.layoutCurrentScenes();
+    button.focus();
+    this.setStatus("");
+    void window.hypercard.musicStop();
+    void this.audio.stop();
   }
 
   private async playCardAudio(card: Card, level: DitherLevel): Promise<void> {
@@ -1199,6 +1350,10 @@ export class HypercardEngine {
     const renderToken = ++this.renderToken;
     const previousCardId = this.currentCardId;
     this.clearSceneTimers();
+    if (options.resetProgression) {
+      this.currentDitherStep = 0;
+      this.currentBackgroundSelection = null;
+    }
 
     try {
       const backgroundLayer = await this.resolveBackgroundLayer(

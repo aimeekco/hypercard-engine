@@ -10,8 +10,9 @@ type StochasticNavigationResult = {
   transition?: CardTransitionSpec;
 };
 
-function isEndingCard(card: Pick<Card, "arrows" | "buttons" | "clickTargets" | "dragTargets">): boolean {
+export function isEndingCard(card: Pick<Card, "arrows" | "buttons" | "clickTargets" | "dragTargets">): boolean {
   return !card.arrows?.length
+    && !card.buttons?.length
     && !card.clickTargets?.length
     && !card.dragTargets?.length;
 }
