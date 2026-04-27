@@ -7,6 +7,7 @@ export type MediaLayer = {
   position?: ScreenPosition;
   loop?: boolean;
   onEndedDirection?: ArrowDirection;
+  freezeBeforeEndSeconds?: number;
 };
 
 export const DITHER_LEVEL_VALUES = [0, 0.25, 0.5, 0.75, 1] as const;
@@ -16,12 +17,15 @@ export type DitherLevelMap<T> = Partial<Record<DitherLevel, T>>;
 export type FinAudioSpec = {
   source: string;
   layerMuteMap?: DitherLevelMap<string[]>;
+  holdSource?: string;
+  holdBeforeEndSeconds?: number;
 };
 
 export type AudioSpec = {
   ambient?: string;
   fin?: FinAudioSpec;
   volume?: number;
+  volumeMap?: DitherLevelMap<number>;
   loop?: boolean;
 };
 

@@ -85,6 +85,16 @@ function parseMediaLayer(value: unknown, path: string, errors: string[]): MediaL
   if (value.loop !== undefined && typeof value.loop !== "boolean") {
     errors.push(`${path}.loop must be a boolean`);
   }
+  if (
+    value.freezeBeforeEndSeconds !== undefined
+    && (
+      typeof value.freezeBeforeEndSeconds !== "number"
+      || !Number.isFinite(value.freezeBeforeEndSeconds)
+      || value.freezeBeforeEndSeconds < 0
+    )
+  ) {
+    errors.push(`${path}.freezeBeforeEndSeconds must be a non-negative number`);
+  }
   if (value.onEndedDirection !== undefined && !isArrowDirection(value.onEndedDirection)) {
     errors.push(`${path}.onEndedDirection must be one of left, right, up, down, forward`);
   }
@@ -93,6 +103,9 @@ function parseMediaLayer(value: unknown, path: string, errors: string[]): MediaL
   }
   if (value.kind === "image" && value.loop !== undefined) {
     errors.push(`${path}.loop is only supported for video layers`);
+  }
+  if (value.kind === "image" && value.freezeBeforeEndSeconds !== undefined) {
+    errors.push(`${path}.freezeBeforeEndSeconds is only supported for video layers`);
   }
   if (value.onEndedDirection !== undefined && value.loop === true) {
     errors.push(`${path}.loop cannot be true when onEndedDirection is set`);
@@ -106,6 +119,7 @@ function parseMediaLayer(value: unknown, path: string, errors: string[]): MediaL
     || (value.onEndedDirection !== undefined && !isArrowDirection(value.onEndedDirection))
     || (value.kind === "image" && value.onEndedDirection !== undefined)
     || (value.kind === "image" && value.loop !== undefined)
+    || (value.kind === "image" && value.freezeBeforeEndSeconds !== undefined)
     || (value.onEndedDirection !== undefined && value.loop === true)
   ) {
     return null;
@@ -115,7 +129,8 @@ function parseMediaLayer(value: unknown, path: string, errors: string[]): MediaL
     src: value.src,
     position,
     loop: typeof value.loop === "boolean" ? value.loop : undefined,
-    onEndedDirection: isArrowDirection(value.onEndedDirection) ? value.onEndedDirection : undefined
+    onEndedDirection: isArrowDirection(value.onEndedDirection) ? value.onEndedDirection : undefined,
+    freezeBeforeEndSeconds: typeof value.freezeBeforeEndSeconds === "number" ? value.freezeBeforeEndSeconds : undefined
   };
 }
 
@@ -177,8 +192,23 @@ function parseAudio(value: unknown, path: string, errors: string[]): AudioSpec |
 
     fin = {
       source: value.fin.source,
-      layerMuteMap
+      layerMuteMap,
+      holdSource: isString(value.fin.holdSource) ? value.fin.holdSource : undefined,
+      holdBeforeEndSeconds: typeof value.fin.holdBeforeEndSeconds === "number" ? value.fin.holdBeforeEndSeconds : undefined
     };
+    if (value.fin.holdSource !== undefined && !isString(value.fin.holdSource)) {
+      errors.push(`${path}.fin.holdSource must be a non-empty string`);
+    }
+    if (
+      value.fin.holdBeforeEndSeconds !== undefined
+      && (
+        typeof value.fin.holdBeforeEndSeconds !== "number"
+        || !Number.isFinite(value.fin.holdBeforeEndSeconds)
+        || value.fin.holdBeforeEndSeconds < 0
+      )
+    ) {
+      errors.push(`${path}.fin.holdBeforeEndSeconds must be a non-negative number`);
+    }
   }
 
   if (
@@ -189,6 +219,27 @@ function parseAudio(value: unknown, path: string, errors: string[]): AudioSpec |
   }
   if (value.loop !== undefined && typeof value.loop !== "boolean") {
     errors.push(`${path}.loop must be a boolean`);
+  }
+  let volumeMap: AudioSpec["volumeMap"] | undefined;
+  if (value.volumeMap !== undefined) {
+    if (!isObject(value.volumeMap)) {
+      errors.push(`${path}.volumeMap must be an object`);
+    } else {
+      const parsedVolumeMap: NonNullable<AudioSpec["volumeMap"]> = {};
+      for (const [rawKey, rawVolume] of Object.entries(value.volumeMap)) {
+        if (!isDitherLevel(rawKey)) {
+          errors.push(`${path}.volumeMap has unsupported level '${rawKey}'`);
+          continue;
+        }
+        if (typeof rawVolume !== "number" || !Number.isFinite(rawVolume) || rawVolume < 0) {
+          errors.push(`${path}.volumeMap.${rawKey} must be a non-negative number`);
+          continue;
+        }
+
+        parsedVolumeMap[Number(rawKey) as DitherLevel] = rawVolume;
+      }
+      volumeMap = parsedVolumeMap;
+    }
   }
 
   if (!ambient && !fin) {
@@ -203,6 +254,7 @@ function parseAudio(value: unknown, path: string, errors: string[]): AudioSpec |
     ambient,
     fin,
     volume: typeof value.volume === "number" ? value.volume : undefined,
+    volumeMap,
     loop: typeof value.loop === "boolean" ? value.loop : undefined
   };
 }

@@ -126,7 +126,9 @@ describe("validateStack", () => {
           },
           overlay: {
             kind: "video",
-            src: "assets/video/trout-alpha.webm"
+            src: "assets/video/trout-alpha.webm",
+            loop: true,
+            freezeBeforeEndSeconds: 0.75
           },
           arrows: [
             {
@@ -150,6 +152,7 @@ describe("validateStack", () => {
     if (result.ok) {
       expect(result.value.cards[0]?.background.loop).toBe(false);
       expect(result.value.cards[0]?.background.onEndedDirection).toBe("up");
+      expect(result.value.cards[0]?.overlay?.freezeBeforeEndSeconds).toBe(0.75);
     }
   });
 
@@ -481,8 +484,15 @@ describe("validateStack", () => {
     const result = validateStack({
       initialCardId: "pool",
       audio: {
+        ambient: "assets/audio/corrupted_file.mp3",
+        volumeMap: {
+          0.25: 0.035,
+          0.5: 0.075
+        },
         fin: {
-          source: "../fin/examples/weird_fishes.metl"
+          source: "../fin/examples/weird_fishes.metl",
+          holdSource: "music/weird_fishes_final_hold.metl",
+          holdBeforeEndSeconds: 1.62
         }
       },
       cards: [
@@ -515,6 +525,8 @@ describe("validateStack", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.value.audio?.fin?.source).toBe("../fin/examples/weird_fishes.metl");
+      expect(result.value.audio?.fin?.holdSource).toBe("music/weird_fishes_final_hold.metl");
+      expect(result.value.audio?.volumeMap?.[0.5]).toBe(0.075);
       expect(result.value.cards[0]?.audio).toBeUndefined();
       expect(result.value.cards[1]?.audio?.fin?.layerMuteMap?.[0.5]).toEqual(["supersquare", "supersnare"]);
     }

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { getMutedLayersForLevel, shouldAutoplayFinAudio } from "../src/shared/audio";
+import {
+  getAmbientVolumeForLevel,
+  getMutedLayersForLevel,
+  resolveAudioSpec,
+  shouldAutoplayFinAudio
+} from "../src/shared/audio";
 import { renderMutedMetlSource, splitMetlSegments } from "../src/main/finMusic";
 
 describe("splitMetlSegments", () => {
@@ -65,6 +70,35 @@ describe("getMutedLayersForLevel", () => {
     }, 0.5);
 
     expect(layers).toEqual(["supersquare"]);
+  });
+});
+
+describe("getAmbientVolumeForLevel", () => {
+  it("falls back to the nearest lower defined ambient volume level", () => {
+    expect(getAmbientVolumeForLevel({
+      ambient: "assets/audio/corrupted_file.mp3",
+      volumeMap: {
+        0.25: 0.035,
+        0.75: 0.14
+      }
+    }, 0.5)).toBe(0.035);
+  });
+});
+
+describe("resolveAudioSpec", () => {
+  it("merges card ambient overrides with stack Fin audio", () => {
+    const resolved = resolveAudioSpec({
+      fin: {
+        source: "../fin/examples/weird_fishes.metl"
+      }
+    }, {
+      ambient: "assets/audio/corrupted_file.mp3",
+      volume: 0.12
+    });
+
+    expect(resolved?.fin?.source).toBe("../fin/examples/weird_fishes.metl");
+    expect(resolved?.ambient).toBe("assets/audio/corrupted_file.mp3");
+    expect(resolved?.volume).toBe(0.12);
   });
 });
 

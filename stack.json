@@ -1,9 +1,21 @@
 {
   "initialCardId": "boot_mac",
   "audio": {
+    "ambient": "assets/audio/corrupted_file.mp3",
     "fin": {
-      "source": "../fin/examples/weird_fishes.metl"
-    }
+      "source": "../fin/examples/weird_fishes.metl",
+      "holdSource": "music/weird_fishes_final_hold.metl",
+      "holdBeforeEndSeconds": 1.62
+    },
+    "volume": 0,
+    "volumeMap": {
+      "0": 0,
+      "0.25": 0.02625,
+      "0.5": 0.05625,
+      "0.75": 0.105,
+      "1": 0.18
+    },
+    "loop": true
   },
   "cards": [
     {
@@ -386,11 +398,14 @@
       "backgroundFolder": "assets/backgrounds",
       "background": {
         "kind": "video",
-        "src": "assets/images/scene_1_dither.mov"
+        "src": "assets/images/scene_1_dither.mov",
+        "loop": false
       },
       "overlay": {
         "kind": "video",
         "src": "assets/images/back_view_dither_render.webm",
+        "loop": true,
+        "freezeBeforeEndSeconds": 0.75,
         "position": {
           "x": 50,
           "y": 58
@@ -403,11 +418,14 @@
       "backgroundFolder": "assets/backgrounds",
       "background": {
         "kind": "video",
-        "src": "assets/images/scene_1_dither.mov"
+        "src": "assets/images/scene_1_dither.mov",
+        "loop": false
       },
       "overlay": {
         "kind": "video",
         "src": "assets/images/back_view_dither_render.webm",
+        "loop": true,
+        "freezeBeforeEndSeconds": 0.75,
         "position": {
           "x": 45,
           "y": 32
@@ -420,11 +438,14 @@
       "backgroundFolder": "assets/backgrounds",
       "background": {
         "kind": "video",
-        "src": "assets/images/scene_1_dither.mov"
+        "src": "assets/images/scene_1_dither.mov",
+        "loop": false
       },
       "overlay": {
         "kind": "video",
         "src": "assets/images/back_view_dither_render.webm",
+        "loop": true,
+        "freezeBeforeEndSeconds": 0.75,
         "position": {
           "x": 50,
           "y": 58
@@ -437,11 +458,14 @@
       "backgroundFolder": "assets/backgrounds",
       "background": {
         "kind": "video",
-        "src": "assets/images/scene_2_dither.mov"
+        "src": "assets/images/scene_2_dither.mov",
+        "loop": false
       },
       "overlay": {
         "kind": "video",
         "src": "assets/images/back_view_dither_render.webm",
+        "loop": true,
+        "freezeBeforeEndSeconds": 0.75,
         "position": {
           "x": 48,
           "y": 68
@@ -454,11 +478,14 @@
       "backgroundFolder": "assets/backgrounds",
       "background": {
         "kind": "video",
-        "src": "assets/images/scene_2.5_dither.mov"
+        "src": "assets/images/scene_2.5_dither.mov",
+        "loop": false
       },
       "overlay": {
         "kind": "video",
         "src": "assets/images/back_view_dither_render.webm",
+        "loop": true,
+        "freezeBeforeEndSeconds": 0.75,
         "position": {
           "x": 50,
           "y": 58
@@ -471,11 +498,14 @@
       "backgroundFolder": "assets/backgrounds",
       "background": {
         "kind": "video",
-        "src": "assets/images/scene_2.5_dither.mov"
+        "src": "assets/images/scene_2.5_dither.mov",
+        "loop": false
       },
       "overlay": {
         "kind": "video",
         "src": "assets/images/back_view_dither_render.webm",
+        "loop": true,
+        "freezeBeforeEndSeconds": 0.75,
         "position": {
           "x": 52,
           "y": 72

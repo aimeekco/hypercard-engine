@@ -4,7 +4,7 @@ import {
   getDitherFolderCandidates,
   getDitherLevelForStep
 } from "@shared/backgroundBank";
-import { hasFinAudio, resolveAudioSpec, shouldAutoplayFinAudio } from "@shared/audio";
+import { getAmbientVolumeForLevel, hasFinAudio, resolveAudioSpec, shouldAutoplayFinAudio } from "@shared/audio";
 import { getArrowNavigationTarget } from "@shared/navigation";
 import { isStochasticCard, resolveStochasticNavigationTarget } from "@shared/stochasticNavigation";
 import type {
@@ -40,6 +40,10 @@ const DEFAULT_CARD_BUTTON_POSITION = {
 };
 
 const INTRO_CLICK_SOUND_PATH = "assets/audio/mouse_click.mp3";
+const VIDEO_FRAME_SIZE = {
+  width: 1920,
+  height: 1080
+};
 
 type EnterCardOptions = {
   advanceProgression?: boolean;
@@ -228,19 +232,31 @@ function getMediaIntrinsicSize(element: HTMLElement): { width: number; height: n
   };
 }
 
-function getContainedFrameRect(containerRect: DOMRect, mediaWidth: number, mediaHeight: number): DOMRect {
-  const mediaAspect = mediaWidth / mediaHeight;
-  const containerAspect = containerRect.width / containerRect.height;
+function applyFrameRect(frame: HTMLElement, rect: DOMRect): void {
+  frame.style.left = `${rect.x}px`;
+  frame.style.top = `${rect.y}px`;
+  frame.style.width = `${rect.width}px`;
+  frame.style.height = `${rect.height}px`;
+}
 
-  if (mediaAspect > containerAspect) {
-    const width = containerRect.width;
-    const height = width / mediaAspect;
-    return new DOMRect(0, (containerRect.height - height) / 2, width, height);
+function getSceneFrameSize(scene: HTMLElement): { width: number; height: number } | null {
+  const width = Number(scene.dataset.frameWidth);
+  const height = Number(scene.dataset.frameHeight);
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    return null;
   }
+  return { width, height };
+}
 
-  const height = containerRect.height;
-  const width = height * mediaAspect;
-  return new DOMRect((containerRect.width - width) / 2, 0, width, height);
+function getElementContentSize(element: HTMLElement): { width: number; height: number } {
+  const rect = element.getBoundingClientRect();
+  const style = window.getComputedStyle(element);
+  const horizontalPadding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+  const verticalPadding = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+  return {
+    width: Math.max(1, rect.width - horizontalPadding),
+    height: Math.max(1, rect.height - verticalPadding)
+  };
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -262,6 +278,9 @@ export class HypercardEngine {
   private isTransitioning = false;
   private currentDitherStep = 0;
   private currentBackgroundSelection: BackgroundSelection | null = null;
+  private videoFrameSize = VIDEO_FRAME_SIZE;
+  private finHoldTimer: number | null = null;
+  private readonly videoFreezeTimers = new Set<number>();
 
   constructor(stage: HTMLElement, status: HTMLElement) {
     this.stage = stage;
@@ -269,7 +288,8 @@ export class HypercardEngine {
 
     window.addEventListener("keydown", this.handleKeyDown);
     window.addEventListener("pointerdown", this.unlockAudio, { once: true });
-    window.addEventListener("resize", this.handleResize);
+    window.addEventListener("resize", this.handleViewportChange);
+    document.addEventListener("fullscreenchange", this.handleViewportChange);
   }
 
   async start(): Promise<void> {
@@ -289,11 +309,10 @@ export class HypercardEngine {
     void this.audio.unlock();
   };
 
-  private readonly handleResize = (): void => {
-    if (!this.currentCardId) {
-      return;
-    }
-    void this.enterCard(this.currentCardId, undefined, { preserveBackgroundSelection: true });
+  private readonly handleViewportChange = (): void => {
+    window.requestAnimationFrame(() => {
+      this.layoutCurrentScenes();
+    });
   };
 
   private readonly handleKeyDown = (event: KeyboardEvent): void => {
@@ -313,6 +332,27 @@ export class HypercardEngine {
 
   private setStatus(message: string): void {
     this.status.textContent = message;
+  }
+
+  private clearFinHoldTimer(): void {
+    if (this.finHoldTimer === null) {
+      return;
+    }
+
+    window.clearTimeout(this.finHoldTimer);
+    this.finHoldTimer = null;
+  }
+
+  private clearVideoFreezeTimers(): void {
+    for (const timer of this.videoFreezeTimers) {
+      window.clearTimeout(timer);
+    }
+    this.videoFreezeTimers.clear();
+  }
+
+  private clearSceneTimers(): void {
+    this.clearFinHoldTimer();
+    this.clearVideoFreezeTimers();
   }
 
   private async applyArrowNavigation(arrow: ArrowLink): Promise<void> {
@@ -392,6 +432,7 @@ export class HypercardEngine {
     options?: {
       card?: Card;
       renderToken?: number;
+      scheduleFinHold?: boolean;
     }
   ): Promise<HTMLElement> {
     const assetUrl = await this.getAssetUrl(layer.src);
@@ -444,10 +485,45 @@ export class HypercardEngine {
       }
     }
     await waitForVideoLoad(video);
+    if (options?.scheduleFinHold && options.card && video.loop === false && Number.isFinite(video.duration)) {
+      this.scheduleFinHold(options.card, video.duration, options.renderToken);
+    }
     void video.play().catch((error) => {
       console.warn("Video playback did not start immediately", error);
     });
     return video;
+  }
+
+  private scheduleFinHold(card: Card, videoDurationSeconds: number, renderToken?: number): void {
+    this.clearFinHoldTimer();
+
+    const audio = resolveAudioSpec(this.stack?.audio, card.audio);
+    if (!hasFinAudio(audio) || !audio.fin.holdSource) {
+      return;
+    }
+
+    const holdSource = audio.fin.holdSource;
+    const holdBeforeEndSeconds = audio.fin.holdBeforeEndSeconds ?? 1.62;
+    const triggerMs = Math.max(0, (videoDurationSeconds - holdBeforeEndSeconds) * 1000);
+    this.finHoldTimer = window.setTimeout(() => {
+      this.finHoldTimer = null;
+      if (
+        renderToken !== undefined
+        && (renderToken !== this.renderToken || this.currentCardId !== card.id)
+      ) {
+        return;
+      }
+
+      const level = this.currentBackgroundSelection?.level ?? this.getDitherLevelForRender(card, false);
+      void window.hypercard.musicStartOrSync({
+        ...audio.fin,
+        source: holdSource,
+        holdSource: undefined,
+        holdBeforeEndSeconds: undefined
+      }, level).catch((error) => {
+        console.warn("Fin hold failed", error);
+      });
+    }, triggerMs);
   }
 
   private createArrowButton(arrow: ArrowLink): HTMLButtonElement {
@@ -750,7 +826,10 @@ export class HypercardEngine {
           resolvedLayers.push({
             kind,
             src: assetPath,
-            position: card.background.position
+            position: card.background.position,
+            loop: card.background.loop,
+            onEndedDirection: card.background.onEndedDirection,
+            freezeBeforeEndSeconds: card.background.freezeBeforeEndSeconds
           });
         }
 
@@ -798,7 +877,7 @@ export class HypercardEngine {
         backgroundLayer,
         "card-media card-media-background",
         `${card.id} background`,
-        { card, renderToken }
+        { card, renderToken, scheduleFinHold: true }
       ),
       card.overlay
         ? this.createLayerElement(
@@ -809,9 +888,19 @@ export class HypercardEngine {
           )
         : Promise.resolve(null)
     ]);
+    this.scheduleOverlayFreeze(backgroundElement, overlayElement, card.overlay, renderToken);
 
     const scene = document.createElement("div");
     scene.className = "card-scene";
+    const backgroundSize = getMediaIntrinsicSize(backgroundElement);
+    if (backgroundLayer.kind === "video") {
+      this.videoFrameSize = backgroundSize;
+    }
+    const frameSize = this.videoFrameSize;
+    scene.dataset.frameWidth = String(frameSize.width);
+    scene.dataset.frameHeight = String(frameSize.height);
+    this.fitStageToFrame(frameSize);
+    this.layoutAttachedSceneFrames();
 
     const layers = document.createElement("div");
     layers.className = "card-layers";
@@ -830,15 +919,10 @@ export class HypercardEngine {
     if (insetCardLabel) {
       controls.append(insetCardLabel);
     }
-    const backgroundSize = getMediaIntrinsicSize(backgroundElement);
     const stageRect = this.stage.getBoundingClientRect();
-    const containedFrameRect = getContainedFrameRect(stageRect, backgroundSize.width, backgroundSize.height);
     const frame = document.createElement("div");
     frame.className = "card-content-frame";
-    frame.style.left = `${containedFrameRect.x}px`;
-    frame.style.top = `${containedFrameRect.y}px`;
-    frame.style.width = `${containedFrameRect.width}px`;
-    frame.style.height = `${containedFrameRect.height}px`;
+    applyFrameRect(frame, new DOMRect(0, 0, stageRect.width, stageRect.height));
 
     const dragTargetElements = await Promise.all((card.dragTargets ?? []).map((dragTarget) => this.createDragTarget(card, dragTarget, frame)));
 
@@ -864,23 +948,101 @@ export class HypercardEngine {
     return scene;
   }
 
+  private fitStageToFrame(size: { width: number; height: number }): void {
+    const mediaAspect = size.width / size.height;
+    if (!Number.isFinite(mediaAspect) || mediaAspect <= 0) {
+      return;
+    }
+
+    this.stage.style.setProperty("--card-aspect-ratio", String(mediaAspect));
+
+    const containerSize = this.stage.parentElement
+      ? getElementContentSize(this.stage.parentElement)
+      : { width: Math.max(1, window.innerWidth), height: Math.max(1, window.innerHeight) };
+    let width = containerSize.width;
+    let height = width / mediaAspect;
+
+    if (height > containerSize.height) {
+      height = containerSize.height;
+      width = height * mediaAspect;
+    }
+
+    this.stage.style.width = `${width}px`;
+    this.stage.style.height = `${height}px`;
+  }
+
+  private layoutSceneFrame(scene: HTMLElement): void {
+    const frame = scene.querySelector<HTMLElement>(".card-content-frame");
+    if (!frame || !getSceneFrameSize(scene)) {
+      return;
+    }
+
+    const stageRect = this.stage.getBoundingClientRect();
+    applyFrameRect(frame, new DOMRect(0, 0, stageRect.width, stageRect.height));
+  }
+
+  private layoutAttachedSceneFrames(): void {
+    for (const scene of Array.from(this.stage.querySelectorAll<HTMLElement>(".card-scene"))) {
+      this.layoutSceneFrame(scene);
+    }
+  }
+
+  private layoutCurrentScenes(): void {
+    const scenes = Array.from(this.stage.querySelectorAll<HTMLElement>(".card-scene"));
+    const activeScene = scenes.at(-1);
+    const activeFrameSize = activeScene ? getSceneFrameSize(activeScene) : null;
+    if (activeFrameSize) {
+      this.fitStageToFrame(activeFrameSize);
+    }
+
+    for (const scene of scenes) {
+      this.layoutSceneFrame(scene);
+    }
+  }
+
+  private scheduleOverlayFreeze(
+    backgroundElement: HTMLElement,
+    overlayElement: HTMLElement | null,
+    overlayLayer: MediaLayer | undefined,
+    renderToken: number
+  ): void {
+    if (
+      !(backgroundElement instanceof HTMLVideoElement)
+      || !(overlayElement instanceof HTMLVideoElement)
+      || overlayLayer?.freezeBeforeEndSeconds === undefined
+      || !Number.isFinite(backgroundElement.duration)
+    ) {
+      return;
+    }
+
+    const triggerMs = Math.max(0, (backgroundElement.duration - overlayLayer.freezeBeforeEndSeconds) * 1000);
+    const timer = window.setTimeout(() => {
+      this.videoFreezeTimers.delete(timer);
+      if (renderToken !== this.renderToken) {
+        return;
+      }
+
+      overlayElement.pause();
+    }, triggerMs);
+    this.videoFreezeTimers.add(timer);
+  }
+
   private async playCardAudio(card: Card, level: DitherLevel): Promise<void> {
     const stackAudio = this.stack?.audio;
     const audio = resolveAudioSpec(stackAudio, card.audio);
     if (hasFinAudio(audio)) {
-      await this.audio.stop();
       if (shouldAutoplayFinAudio(card, stackAudio)) {
         await window.hypercard.musicStartOrSync(audio.fin, level);
       } else {
         await window.hypercard.musicStop();
       }
-      return;
+    } else {
+      await window.hypercard.musicStop();
     }
 
-    await window.hypercard.musicStop();
     if (audio?.ambient) {
       await this.audio.playAmbient(audio.ambient, {
-        volume: audio.volume,
+        volume: getAmbientVolumeForLevel(audio, level),
         loop: audio.loop
       });
       return;
@@ -1036,6 +1198,7 @@ export class HypercardEngine {
 
     const renderToken = ++this.renderToken;
     const previousCardId = this.currentCardId;
+    this.clearSceneTimers();
 
     try {
       const backgroundLayer = await this.resolveBackgroundLayer(
@@ -1143,7 +1306,9 @@ export class HypercardEngine {
   dispose(): void {
     window.removeEventListener("keydown", this.handleKeyDown);
     window.removeEventListener("pointerdown", this.unlockAudio);
-    window.removeEventListener("resize", this.handleResize);
+    window.removeEventListener("resize", this.handleViewportChange);
+    document.removeEventListener("fullscreenchange", this.handleViewportChange);
+    this.clearSceneTimers();
     this.unsubscribeFileChanged?.();
     this.unsubscribeFileChanged = null;
     for (const url of this.assetUrlCache.values()) {

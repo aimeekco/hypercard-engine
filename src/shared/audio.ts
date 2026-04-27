@@ -37,12 +37,33 @@ export function getMutedLayersForLevel(
   return resolved ? [...resolved] : [];
 }
 
+export function getAmbientVolumeForLevel(
+  spec: AudioSpec,
+  level: DitherLevel
+): number {
+  const resolved = spec.volumeMap ? getDitherLevelValue(spec.volumeMap, level) : undefined;
+  return resolved ?? spec.volume ?? 0.7;
+}
+
 export function hasFinAudio(audio?: AudioSpec): audio is AudioSpec & { fin: FinAudioSpec } {
   return Boolean(audio?.fin);
 }
 
 export function resolveAudioSpec(stackAudio?: AudioSpec, cardAudio?: AudioSpec): AudioSpec | undefined {
-  return cardAudio ?? stackAudio;
+  if (!stackAudio) {
+    return cardAudio;
+  }
+  if (!cardAudio) {
+    return stackAudio;
+  }
+
+  return {
+    ambient: cardAudio.ambient ?? stackAudio.ambient,
+    fin: cardAudio.fin ?? stackAudio.fin,
+    volume: cardAudio.volume ?? stackAudio.volume,
+    volumeMap: cardAudio.volumeMap ?? stackAudio.volumeMap,
+    loop: cardAudio.loop ?? stackAudio.loop
+  };
 }
 
 export function shouldAutoplayFinAudio(

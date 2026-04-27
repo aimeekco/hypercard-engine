@@ -1,0 +1,5 @@
+bpm = 148
+bars = 1
+
+[superfm] .sustain 8 .gain 0.7
+    [default] <g4>
